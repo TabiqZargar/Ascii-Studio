@@ -1,0 +1,268 @@
+import { useRef, useState, useCallback, useEffect } from "react";
+import { useApp, useDispatch } from "../../context/AppContext";
+import type { EditorCell } from "../../types";
+
+interface Props {
+  asciiOutput: string;
+  colorGrid: string[][];
+}
+
+function computeShapeCells(
+  brushType: string,
+  startRow: number,
+  startCol: number,
+  endRow: number,
+  endCol: number,
+  brush: string
+): EditorCell[] {
+  const cells: EditorCell[] = [];
+  const minR = Math.min(startRow, endRow);
+  const maxR = Math.max(startRow, endRow);
+  const minC = Math.min(startCol, endCol);
+  const maxC = Math.max(startCol, endCol);
+
+  switch (brushType) {
+    case "rectangle":
+      for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+          if (r === minR || r === maxR || c === minC || c === maxC) {
+            cells.push({ row: r, col: c, char: brush });
+          }
+        }
+      }
+      break;
+    case "circle": {
+      const cx = (startCol + endCol) / 2;
+      const cy = (startRow + endRow) / 2;
+      const rx = Math.abs(endCol - startCol) / 2;
+      const ry = Math.abs(endRow - startRow) / 2;
+      for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+          const dx = (c - cx) / (rx || 1);
+          const dy = (r - cy) / (ry || 1);
+          if (Math.abs(dx * dx + dy * dy - 1) < 0.3) {
+            cells.push({ row: r, col: c, char: brush });
+          }
+        }
+      }
+      break;
+    }
+    case "line": {
+      const steps = Math.max(Math.abs(endCol - startCol), Math.abs(endRow - startRow), 1);
+      for (let i = 0; i <= steps; i++) {
+        const t = steps === 0 ? 0 : i / steps;
+        const r = Math.round(startRow + (endRow - startRow) * t);
+        const c = Math.round(startCol + (endCol - startCol) * t);
+        cells.push({ row: r, col: c, char: brush });
+      }
+      break;
+    }
+    case "fill":
+      for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+          cells.push({ row: r, col: c, char: brush });
+        }
+      }
+      break;
+  }
+  return cells;
+}
+
+export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
+  const state = useApp();
+  const dispatch = useDispatch();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fittedRef = useRef(false);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [shapeStart, setShapeStart] = useState<{ row: number; col: number } | null>(null);
+
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        dispatch({ type: "SET_ZOOM", zoom: state.zoom + (e.deltaY > 0 ? -0.1 : 0.1) });
+      }
+    },
+    [state.zoom, dispatch]
+  );
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button === 1 || e.altKey) {
+        setIsPanning(true);
+        setPanStart({ x: e.clientX - state.panX, y: e.clientY - state.panY });
+        e.preventDefault();
+      }
+    },
+    [state.panX, state.panY]
+  );
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (isPanning) {
+        dispatch({ type: "SET_PAN", x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+      }
+    },
+    [isPanning, panStart, dispatch]
+  );
+
+  const handleMouseUp = useCallback(() => setIsPanning(false), []);
+
+  // Fit to screen on new image only
+  useEffect(() => {
+    fittedRef.current = false;
+  }, [state.imageUrl]);
+
+  useEffect(() => {
+    if (state.imageUrl && containerRef.current && asciiOutput && !fittedRef.current) {
+      fittedRef.current = true;
+      const rect = containerRef.current.getBoundingClientRect();
+      const lines = asciiOutput.split("\n").length;
+      const maxCols = Math.max(...asciiOutput.split("\n").map((l) => l.length), 1);
+      if (lines > 0 && maxCols > 0) {
+        const scaleX = rect.width / (maxCols * (state.canvas.fontSize * 0.6));
+        const scaleY = rect.height / (lines * state.canvas.fontSize * state.canvas.lineHeight);
+        dispatch({ type: "SET_ZOOM", zoom: Math.max(0.5, Math.min(Math.min(scaleX, scaleY, 3), 3)) });
+        dispatch({ type: "SET_PAN", x: 0, y: 0 });
+      }
+    }
+  });
+
+  const asciiLayer = state.layers.find((l) => l.type === "ascii");
+  const showAscii = asciiLayer?.visible ?? true;
+  const lines = asciiOutput ? asciiOutput.split("\n") : [];
+  const { fontSize, lineHeight, letterSpacing, fontFamily } = state.canvas;
+
+  let bgStyle = "bg-black";
+  let bgCustom = "";
+  if (state.background.type === "white") bgStyle = "bg-white";
+  else if (state.background.type === "transparent")
+    bgStyle = "bg-[repeating-conic-gradient(#333_0%_25%,transparent_0%_50%)] bg-[length:16px_16px]";
+  else if (state.background.type === "custom") {
+    bgStyle = "";
+    bgCustom = state.background.color;
+  } else if (state.background.type === "gradient") {
+    bgStyle = "";
+    bgCustom = `linear-gradient(135deg, ${state.background.gradientColors[0]}, ${state.background.gradientColors[1]})`;
+  }
+
+  const handleCharMouseDown = useCallback((row: number, col: number, e: React.MouseEvent) => {
+    if (state.activeLayerId !== "ascii-layer" || asciiLayer?.locked) return;
+    e.stopPropagation();
+    const paintChar = state.brushType === "eraser" ? " " : state.brushChar;
+
+    if (state.brushType === "brush" || state.brushType === "eraser" || state.brushType === "text") {
+      dispatch({ type: "PUSH_UNDO", grid: state.editorGrid.map((r) => [...r]) });
+      const cells: EditorCell[] = [];
+      if (state.brushType === "text") {
+        cells.push({ row, col, char: paintChar });
+      } else {
+        for (let dy = 0; dy < state.brushSize; dy++) {
+          for (let dx = 0; dx < state.brushSize; dx++) {
+            cells.push({ row: row + dy, col: col + dx, char: paintChar });
+          }
+        }
+      }
+      dispatch({ type: "PAINT_CELLS", cells });
+    } else if (["rectangle", "circle", "line", "fill"].includes(state.brushType)) {
+      dispatch({ type: "PUSH_UNDO", grid: state.editorGrid.map((r) => [...r]) });
+      setShapeStart({ row, col });
+    }
+  }, [state.activeLayerId, asciiLayer?.locked, state.brushType, state.brushChar, state.brushSize, state.editorGrid, dispatch]);
+
+  const handleCharMouseEnter = useCallback((row: number, col: number, e: React.MouseEvent) => {
+    if (e.buttons === 0 || state.activeLayerId !== "ascii-layer" || asciiLayer?.locked) return;
+    const paintChar = state.brushType === "eraser" ? " " : state.brushChar;
+    if (state.brushType === "brush" || state.brushType === "eraser") {
+      const cells: EditorCell[] = [];
+      for (let dy = 0; dy < state.brushSize; dy++) {
+        for (let dx = 0; dx < state.brushSize; dx++) {
+          cells.push({ row: row + dy, col: col + dx, char: paintChar });
+        }
+      }
+      dispatch({ type: "PAINT_CELLS", cells });
+    }
+  }, [state.activeLayerId, asciiLayer?.locked, state.brushType, state.brushChar, state.brushSize, dispatch]);
+
+  const handleCharMouseUp = useCallback((row: number, col: number) => {
+    if (!shapeStart || !["rectangle", "circle", "line", "fill"].includes(state.brushType)) return;
+    const paintChar = state.brushType === "eraser" ? " " : state.brushChar;
+    const cells = computeShapeCells(state.brushType, shapeStart.row, shapeStart.col, row, col, paintChar);
+    if (cells.length > 0) dispatch({ type: "FILL_CELLS", cells });
+    setShapeStart(null);
+  }, [shapeStart, state.brushType, state.brushChar, dispatch]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative flex-1 overflow-hidden ${bgStyle}`}
+      style={bgCustom ? { background: bgCustom } : undefined}
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-2 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm">
+        <button onClick={() => dispatch({ type: "SET_ZOOM", zoom: state.zoom - 0.1 })} className="hover:text-zinc-200">−</button>
+        <span className="w-12 text-center font-mono">{Math.round(state.zoom * 100)}%</span>
+        <button onClick={() => dispatch({ type: "SET_ZOOM", zoom: state.zoom + 0.1 })} className="hover:text-zinc-200">+</button>
+        <button
+          onClick={() => { dispatch({ type: "SET_ZOOM", zoom: 1 }); dispatch({ type: "SET_PAN", x: 0, y: 0 }); }}
+          className="ml-1 hover:text-zinc-200"
+          title="Reset"
+        >
+          ⟲
+        </button>
+      </div>
+
+      <div
+        className="absolute inset-0 flex items-center justify-center"
+        style={{
+          transform: `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`,
+          transformOrigin: "center center",
+          cursor: isPanning ? "grabbing" : "default",
+        }}
+      >
+        {asciiOutput ? (
+          <pre
+            className="whitespace-pre font-mono text-zinc-300"
+            style={{ fontSize: `${fontSize}px`, lineHeight, letterSpacing: `${letterSpacing}px`, fontFamily }}
+          >
+            {showAscii ? lines.map((line, y) => {
+              const cLine = colorGrid[y] ?? [];
+              return (
+                <div key={y} style={state.colorMode === "mono" ? { color: state.monoColor } : undefined}>
+                  {line.split("").map((ch, x) => {
+                    const edited = state.editorGrid[y]?.[x]?.char;
+                    const display = edited ?? ch;
+                    const color = state.colorMode !== "mono" ? (cLine[x] ?? state.monoColor) : undefined;
+                    return (
+                      <span
+                        key={x}
+                        style={color ? { color } : undefined}
+                        className={state.activeLayerId === "ascii-layer" && !asciiLayer?.locked ? "cursor-crosshair hover:bg-violet-500/30" : ""}
+                        onMouseDown={(e) => handleCharMouseDown(y, x, e)}
+                        onMouseEnter={(e) => handleCharMouseEnter(y, x, e)}
+                        onMouseUp={() => handleCharMouseUp(y, x)}
+                      >
+                        {display}
+                      </span>
+                    );
+                  })}
+                </div>
+              );
+            }) : (
+              <div className="text-sm text-zinc-600">ASCII layer hidden</div>
+            )}
+          </pre>
+        ) : (
+          <div className="text-sm text-zinc-600">
+            {state.loading ? "Processing..." : "Upload an image to begin"}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
