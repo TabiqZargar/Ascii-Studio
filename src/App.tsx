@@ -90,6 +90,7 @@ export default function App() {
     const gen = generationRef.current;
 
     convertFrame(frame, params, (output, colorGrid) => {
+      console.log(`[App] Frame ${idx} processed`);
       if (generationRef.current !== gen) { processingRef.current = false; return; }
       dispatch({ type: "CACHE_FRAME", index: idx, frame: { output, colorGrid } });
       processingRef.current = false;

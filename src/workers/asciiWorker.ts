@@ -105,4 +105,5 @@ self.onmessage = (e: MessageEvent) => {
   };
 
   self.postMessage(convertFrame(imageData, charset, width, adjustments));
+  console.log(`[Worker] Processed frame`);
 };
