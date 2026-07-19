@@ -189,7 +189,7 @@ const AsciiCanvas = forwardRef<HTMLDivElement, Props>(function AsciiCanvas({ asc
   return (
     <div
       ref={setRefs}
-      className="relative flex-1 overflow-hidden checkerboard"
+      className="absolute inset-0 overflow-hidden checkerboard"
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}

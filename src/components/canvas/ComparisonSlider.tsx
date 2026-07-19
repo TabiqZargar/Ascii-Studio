@@ -49,7 +49,7 @@ export default function ComparisonSlider({ asciiOutput, colorGrid }: Props) {
   return (
     <div
       ref={containerRef}
-      className="relative flex-1 overflow-hidden select-none"
+      className="absolute inset-0 overflow-hidden select-none"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >

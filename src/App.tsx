@@ -276,18 +276,17 @@ export default function App() {
               {!state.fullscreen && <Dock activeSection={activeDockSection} onSectionChange={setActiveDockSection} />}
               {!state.fullscreen && <Inspector section={activeDockSection} />}
 
-              <main className="absolute inset-0 flex items-center justify-center z-20">
+              <main className="absolute inset-0 z-20" style={{ paddingLeft: 80, paddingRight: 332, paddingTop: 80, paddingBottom: isAnimating ? 120 : 52 }}>
                 <div
                   ref={canvasContainerRef}
-                  className="relative w-[calc(100%-280px)] h-[calc(100%-160px)] glass-panel rounded-2xl overflow-hidden checkerboard flex items-center justify-center shadow-inner"
-                  style={{ marginLeft: "80px", marginTop: "90px" }}
+                  className="relative w-full h-full glass-panel rounded-2xl checkerboard shadow-inner"
                 >
                   {state.comparisonMode ? (
                     <ComparisonSlider asciiOutput={state.asciiOutput} colorGrid={state.colorGrid} />
                   ) : state.imageUrl ? (
                     <AsciiCanvas asciiOutput={state.asciiOutput} colorGrid={state.colorGrid} />
                   ) : (
-                    <div className="flex flex-1 items-center justify-center p-8">
+                    <div className="absolute inset-0 flex items-center justify-center p-8">
                       <Upload />
                     </div>
                   )}
@@ -307,8 +306,8 @@ export default function App() {
 
               {isAnimating && <Timeline />}
 
-              {!state.fullscreen && state.imageUrl && (
-                <div className="fixed bottom-3 left-20 right-3 z-30 flex items-center gap-3 rounded-xl bg-surface/60 backdrop-blur-xl border border-outline-variant/20 px-4 py-2" style={{ display: isAnimating ? "none" : undefined }}>
+              {!state.fullscreen && state.imageUrl && !isAnimating && (
+                <div className="fixed bottom-3 left-20 right-3 z-30 flex items-center gap-3 rounded-xl bg-surface/60 backdrop-blur-xl border border-outline-variant/20 px-4 py-2">
                   <Histogram imageData={state.imageData} />
                 </div>
               )}
