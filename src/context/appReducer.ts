@@ -398,8 +398,10 @@ export function appReducer(state: AppState, action: Action): AppState {
       const cachedCount = cache.filter((f) => f !== undefined).length;
       const anim = { ...state.animation, frameCache: cache, cachedCount };
       if (action.index === state.animation.currentFrame) {
+        console.log("[Reducer] CACHE_FRAME", action.index, "=== currentFrame", state.animation.currentFrame, "→ updating asciiOutput, output len:", action.frame.output.length);
         return { ...state, animation: anim, asciiOutput: action.frame.output, colorGrid: action.frame.colorGrid };
       }
+      console.log("[Reducer] CACHE_FRAME", action.index, "!== currentFrame", state.animation.currentFrame, "→ cache only, cachedCount:", cachedCount);
       return { ...state, animation: anim };
     }
     case "SET_PENDING":
@@ -408,6 +410,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       const maxIdx = state.animation.frameCache.length - 1;
       const idx = Math.max(0, Math.min(action.index, maxIdx));
       const cached = state.animation.frameCache[idx];
+      console.log("[Reducer] SET_CURRENT_FRAME", idx, "cached:", !!cached, "output len:", cached ? cached.output.length : "N/A");
       if (!cached) return { ...state, animation: { ...state.animation, currentFrame: idx } };
       return {
         ...state,

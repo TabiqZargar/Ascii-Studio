@@ -119,75 +119,93 @@ export default function Upload() {
         const buffer = await file.arrayBuffer();
 
         if (isAnimatedWebP(buffer)) {
-          // Stage 1: Decode all WebP frames via ImageDecoder
+          // Stage 1: Decode all WebP frames via RIFF ANMF parser + ImageDecoder
           const decodeStart = performance.now();
           const targetWidth = state.canvas.asciiWidth;
           const webp = await decodeAnimatedWebP(buffer, targetWidth);
           const decodeTime = performance.now() - decodeStart;
 
-          if (!webp.animated || webp.frames.length < 2) {
-            throw new Error("Not an animated WebP");
+          // Use frames.length as the source of truth, not the animated flag
+          // (ImageDecoder's track.frameCount is often wrong for animated WebP)
+          if (webp.frames.length < 2) {
+            // Truly single-frame — fall through to static path
+            const url = URL.createObjectURL(file);
+            const canvas = document.createElement("canvas");
+            const imageData = await loadImageToCanvas(url, canvas);
+            const scaled = downscaleImage(imageData, 2048);
+            const small = downscaleForDisplay(scaled, 400);
+            const analysis = analyzeImage(scaled);
+            dispatch({ type: "SET_IMAGE", url, imageData: scaled, smallImageData: small, analysis });
+          } else {
+            // Debug output
+            const durations = webp.frames.map((f) => f.delayMs);
+            console.log("Animated WebP detected");
+            console.log(`Frames: ${webp.frames.length}`);
+            console.log(`Loop: ${webp.loopCount === 0 ? "infinite" : webp.loopCount}`);
+            console.log(`Frame durations: [${durations.join(", ")}]`);
+
+            // Stage 2: FPS Analysis
+            const fpsStart = performance.now();
+            const avgDelay = durations.reduce((sum, d) => sum + d, 0) / durations.length;
+            const sourceFps = Math.round(1000 / avgDelay);
+            const sourceInterval = 1000 / sourceFps;
+            const targetInterval = 1000 / TARGET_FPS;
+            const frameStep = Math.max(1, Math.round(targetInterval / sourceInterval));
+            const sampledIndices: number[] = [];
+            for (let i = 0; i < webp.frames.length; i += frameStep) {
+              sampledIndices.push(i);
+            }
+            const fpsTime = performance.now() - fpsStart;
+
+            // Stage 3: Collect sampled frames
+            const downsampleStart = performance.now();
+            const rawFrames: ImageData[] = [];
+            const timings: number[] = [];
+            for (const idx of sampledIndices) {
+              rawFrames.push(webp.frames[idx].imageData);
+              timings.push(webp.frames[idx].delayMs);
+            }
+            const downsampleTime = performance.now() - downsampleStart;
+
+            console.log(`ASCII frames generated: ${rawFrames.length}`);
+
+            // Stage 4: First frame setup
+            const firstScaled = webp.frames[0].imageData;
+            const small = downscaleForDisplay(firstScaled, 400);
+            const analysis = analyzeImage(firstScaled);
+
+            const canvas = document.createElement("canvas");
+            canvas.width = firstScaled.width;
+            canvas.height = firstScaled.height;
+            const ctx = canvas.getContext("2d")!;
+            ctx.putImageData(firstScaled, 0, 0);
+            const thumbUrl = canvas.toDataURL("image/png");
+
+            dispatch({ type: "INIT_ANIMATION", rawFrames, timings, sourceFps });
+            dispatch({ type: "SET_IMAGE", url: thumbUrl, imageData: firstScaled, smallImageData: small, analysis });
+
+            const totalTime = performance.now() - pipelineStart;
+            const profile: PipelineProfile = {
+              gifParse: webp.profile?.headerParse ?? 0,
+              lzwDecode: webp.profile?.frameDecode ?? 0,
+              frameComposite: 0,
+              frameSnapshot: webp.profile?.frameConvert ?? 0,
+              fpsAnalysis: fpsTime,
+              frameDownsample: downsampleTime,
+              workerTransfer: 0,
+              workerConvert: 0,
+              workerTransferBack: 0,
+              totalGifDecode: decodeTime,
+              totalPipeline: totalTime,
+              frameCount: webp.frames.length,
+              sampledFrameCount: rawFrames.length,
+              sourceWidth: webp.width,
+              sourceHeight: webp.height,
+            };
+            logProfile(profile);
           }
-
-          // Stage 2: FPS Analysis
-          const fpsStart = performance.now();
-          const avgDelay = webp.frames.reduce((sum, f) => sum + f.delayMs, 0) / webp.frames.length;
-          const sourceFps = Math.round(1000 / avgDelay);
-          const sourceInterval = 1000 / sourceFps;
-          const targetInterval = 1000 / TARGET_FPS;
-          const frameStep = Math.max(1, Math.round(targetInterval / sourceInterval));
-          const sampledIndices: number[] = [];
-          for (let i = 0; i < webp.frames.length; i += frameStep) {
-            sampledIndices.push(i);
-          }
-          const fpsTime = performance.now() - fpsStart;
-
-          // Stage 3: Collect sampled frames
-          const downsampleStart = performance.now();
-          const rawFrames: ImageData[] = [];
-          const timings: number[] = [];
-          for (const idx of sampledIndices) {
-            rawFrames.push(webp.frames[idx].imageData);
-            timings.push(webp.frames[idx].delayMs);
-          }
-          const downsampleTime = performance.now() - downsampleStart;
-
-          // Stage 4: First frame setup
-          const firstScaled = webp.frames[0].imageData;
-          const small = downscaleForDisplay(firstScaled, 400);
-          const analysis = analyzeImage(firstScaled);
-
-          const canvas = document.createElement("canvas");
-          canvas.width = firstScaled.width;
-          canvas.height = firstScaled.height;
-          const ctx = canvas.getContext("2d")!;
-          ctx.putImageData(firstScaled, 0, 0);
-          const thumbUrl = canvas.toDataURL("image/png");
-
-          dispatch({ type: "INIT_ANIMATION", rawFrames, timings, sourceFps });
-          dispatch({ type: "SET_IMAGE", url: thumbUrl, imageData: firstScaled, smallImageData: small, analysis });
-
-          const totalTime = performance.now() - pipelineStart;
-          const profile: PipelineProfile = {
-            gifParse: webp.profile?.headerParse ?? 0,
-            lzwDecode: webp.profile?.frameDecode ?? 0,
-            frameComposite: 0,
-            frameSnapshot: webp.profile?.frameConvert ?? 0,
-            fpsAnalysis: fpsTime,
-            frameDownsample: downsampleTime,
-            workerTransfer: 0,
-            workerConvert: 0,
-            workerTransferBack: 0,
-            totalGifDecode: decodeTime,
-            totalPipeline: totalTime,
-            frameCount: webp.frames.length,
-            sampledFrameCount: rawFrames.length,
-            sourceWidth: webp.width,
-            sourceHeight: webp.height,
-          };
-          logProfile(profile);
         } else {
-          // Static WebP — fall through to standard image path
+          // Static WebP — standard image path
           const url = URL.createObjectURL(file);
           const canvas = document.createElement("canvas");
           const imageData = await loadImageToCanvas(url, canvas);

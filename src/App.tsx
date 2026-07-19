@@ -69,8 +69,10 @@ export default function App() {
     const params = getConvertParams();
     const gen = generationRef.current;
 
+    console.log("[processQueue] converting frame", idx, "queue remaining:", queueRef.current.length);
     convertFrame(frame, params, (output, colorGrid) => {
       if (generationRef.current !== gen) { processingRef.current = false; return; }
+      console.log("[processQueue] CACHE_FRAME dispatched for frame", idx, "output length:", output.length);
       dispatch({ type: "CACHE_FRAME", index: idx, frame: { output, colorGrid } });
       processingRef.current = false;
       processQueue();
@@ -153,6 +155,7 @@ export default function App() {
   useEffect(() => {
     if (state.animation.playing && state.animation.rawFrames.length > 0) {
       const interval = 1000 / state.animation.fps;
+      console.log("[Timer] starting with interval:", interval, "ms, fps:", state.animation.fps);
       animTimerRef.current = window.setInterval(() => {
         const total = stateRef.current.animation.rawFrames.length;
         const cur = animFrameRef.current;
@@ -160,13 +163,16 @@ export default function App() {
 
         if (nextIdx >= total) {
           if (stateRef.current.animation.loop) {
+            console.log("[Timer] wrapping to frame 0");
             dispatch({ type: "SET_CURRENT_FRAME", index: 0 });
           } else {
             dispatch({ type: "TOGGLE_PLAY" });
           }
         } else {
           // If next frame is cached, advance; otherwise skip ahead to next cached
-          if (stateRef.current.animation.frameCache[nextIdx]) {
+          const nextCached = !!stateRef.current.animation.frameCache[nextIdx];
+          if (nextCached) {
+            console.log("[Timer] advancing to frame", nextIdx, "(cached)");
             dispatch({ type: "SET_CURRENT_FRAME", index: nextIdx });
           } else {
             // Find next cached frame forward
@@ -175,9 +181,11 @@ export default function App() {
               if (stateRef.current.animation.frameCache[i]) { found = i; break; }
             }
             if (found >= 0) {
+              console.log("[Timer] skipping from", cur, "to frame", found, "(next cached)");
               dispatch({ type: "SET_CURRENT_FRAME", index: found });
+            } else {
+              console.log("[Timer] NO cached frame ahead of", cur, "- cache filled:", stateRef.current.animation.cachedCount, "/", total);
             }
-            // If nothing found, stay on current frame (will advance when cache fills)
           }
         }
       }, interval);
