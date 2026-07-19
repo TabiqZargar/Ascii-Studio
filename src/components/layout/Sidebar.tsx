@@ -2,7 +2,6 @@ import { useApp, useDispatch } from "../../context/AppContext";
 import { Collapsible } from "../common/Collapsible";
 import { Slider, Toggle, ColorPicker } from "../common/Controls";
 import { CHAR_PRESETS } from "../../data/presets";
-import { autoOptimize } from "../../engine/autoOptimize";
 
 export default function Sidebar() {
   return (
@@ -30,9 +29,6 @@ export default function Sidebar() {
       </Collapsible>
       <Collapsible title="Advanced">
         <AdvancedPanel />
-      </Collapsible>
-      <Collapsible title="Engine">
-        <EnginePanel />
       </Collapsible>
       <Collapsible title="Export">
         <ExportPanel />
@@ -81,23 +77,6 @@ function QuickControls() {
           🔄 Reset
         </button>
       </div>
-      {state.imageData && (
-        <button onClick={() => {
-          const result = autoOptimize(state.imageData!, state);
-          const imgAnalysis = {
-            score: result.analysis.confidence > 0.5 ? "excellent" as const : result.analysis.confidence > 0.2 ? "good" as const : "difficult" as const,
-            label: `Detected: ${result.analysis.type}`,
-            detail: result.summary,
-            avgBrightness: result.analysis.features.brightnessMean,
-            avgContrast: result.analysis.features.contrastRatio * 255,
-            subjectType: result.analysis.type,
-            confidence: result.analysis.confidence,
-          };
-          dispatch({ type: "AUTO_OPTIMIZE", analysis: imgAnalysis, engine: { useShapeMatching: true, dithering: "floyd-steinberg" }, adj: result.suggestedState.adjustments ?? {} });
-        }} className="mt-2 w-full rounded-lg bg-emerald-600/20 px-2 py-1.5 text-[11px] text-emerald-400 hover:bg-emerald-600/30 transition-all">
-          ✨ Auto Optimize
-        </button>
-      )}
       <Slider label="Detail Level" value={state.canvas.asciiWidth} min={30} max={250} step={5} onChange={(v) => dispatch({ type: "SET_CANVAS", canvas: { asciiWidth: v, asciiHeight: Math.round(v * 0.5) } })} />
     </div>
   );
@@ -308,32 +287,6 @@ function AdvancedPanel() {
       <Toggle label="Invert" checked={a.invert} onChange={(v) => dispatch({ type: "SET_ADJUSTMENTS", adj: { invert: v } })} />
       <Toggle label="Grayscale" checked={a.grayscale} onChange={(v) => dispatch({ type: "SET_ADJUSTMENTS", adj: { grayscale: v } })} />
       <Toggle label="Edge Detection" checked={a.edgeDetection} onChange={(v) => dispatch({ type: "SET_ADJUSTMENTS", adj: { edgeDetection: v } })} />
-    </div>
-  );
-}
-
-function EnginePanel() {
-  const state = useApp();
-  const dispatch = useDispatch();
-  const e = state.engine;
-  return (
-    <div>
-      <Toggle label="Shape Matching" checked={e.useShapeMatching} onChange={(v) => dispatch({ type: "SET_ENGINE", engine: { useShapeMatching: v } })} />
-      <div className="mb-3">
-        <label className="mb-1 block text-[10px] text-zinc-500 uppercase tracking-wider">Dithering</label>
-        <div className="flex gap-1">
-          {(["none", "floyd-steinberg", "bayer"] as const).map((mode) => (
-            <button key={mode} onClick={() => dispatch({ type: "SET_ENGINE", engine: { dithering: mode } })} className={`flex-1 rounded-lg px-1.5 py-1 text-[10px] transition-all ${e.dithering === mode ? "bg-emerald-600/20 text-emerald-300" : "bg-zinc-800/50 text-zinc-400 hover:bg-zinc-700/50"}`}>
-              {mode === "none" ? "None" : mode === "floyd-steinberg" ? "F-S" : "Bayer"}
-            </button>
-          ))}
-        </div>
-      </div>
-      <Slider label="Edge Enhancement" value={e.edgeEnhance} min={0} max={5} step={0.1} onChange={(v) => dispatch({ type: "SET_ENGINE", engine: { edgeEnhance: v } })} />
-      <Toggle label="Histogram Eq" checked={e.enableHistogramEq} onChange={(v) => dispatch({ type: "SET_ENGINE", engine: { enableHistogramEq: v } })} />
-      <Toggle label="Adaptive Eq" checked={e.enableAdaptiveEq} onChange={(v) => dispatch({ type: "SET_ENGINE", engine: { enableAdaptiveEq: v } })} />
-      <Toggle label="Unsharp Mask" checked={e.enableUnsharpMask} onChange={(v) => dispatch({ type: "SET_ENGINE", engine: { enableUnsharpMask: v } })} />
-      <Toggle label="Noise Reduction" checked={e.enableNoiseReduction} onChange={(v) => dispatch({ type: "SET_ENGINE", engine: { enableNoiseReduction: v } })} />
     </div>
   );
 }

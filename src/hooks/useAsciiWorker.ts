@@ -25,33 +25,6 @@ export function useAsciiWorker() {
 
       const chars = getActiveCharString(state);
 
-      const options = {
-        charset: chars,
-        asciiWidth: state.canvas.asciiWidth,
-        asciiHeight: state.canvas.asciiHeight,
-        brightness: state.adjustments.brightness,
-        contrast: state.adjustments.contrast,
-        saturation: state.adjustments.saturation,
-        exposure: state.adjustments.exposure,
-        gamma: state.adjustments.gamma,
-        sharpness: state.adjustments.sharpness,
-        blur: state.adjustments.blur,
-        invert: state.adjustments.invert,
-        grayscale: state.adjustments.grayscale,
-        edgeDetection: state.adjustments.edgeDetection,
-        dithering: state.engine.dithering,
-        useShapeMatching: state.engine.useShapeMatching,
-        ditherLevels: chars.length,
-        invertColors: false,
-        colorMode: state.colorMode,
-        monoColor: state.monoColor,
-        enableHistogramEq: state.engine.enableHistogramEq,
-        enableAdaptiveEq: state.engine.enableAdaptiveEq,
-        enableUnsharpMask: state.engine.enableUnsharpMask,
-        enableNoiseReduction: state.engine.enableNoiseReduction,
-        edgeEnhance: state.engine.edgeEnhance,
-      };
-
       const worker = workerRef.current;
 
       const handler = (e: MessageEvent) => {
@@ -62,7 +35,14 @@ export function useAsciiWorker() {
 
       worker.postMessage({
         imageData: state.imageData,
-        options,
+        charset: chars,
+        width: state.canvas.asciiWidth,
+        adjustments: {
+          brightness: state.adjustments.brightness,
+          contrast: state.adjustments.contrast,
+          gamma: state.adjustments.gamma,
+          invert: state.adjustments.invert,
+        },
       });
     },
     []
