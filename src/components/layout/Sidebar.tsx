@@ -312,7 +312,7 @@ function AdvancedPanel() {
 
 function ExportPanel() {
   const state = useApp();
-  const hasAnimation = state.animation.frames.length > 1;
+  const hasAnimation = state.animation.cachedCount > 1;
   const formats = [
     { id: "txt", label: "TXT", desc: "Plain text" },
     { id: "png", label: "PNG", desc: "Image" },

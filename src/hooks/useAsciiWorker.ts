@@ -2,6 +2,12 @@ import { useRef, useCallback, useEffect } from "react";
 import type { AppState } from "../types";
 import { getActiveCharString } from "../context/appReducer";
 
+export interface ConvertParams {
+  charset: string;
+  asciiWidth: number;
+  adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean };
+}
+
 export function useAsciiWorker() {
   const workerRef = useRef<Worker | null>(null);
 
@@ -27,8 +33,10 @@ export function useAsciiWorker() {
       const worker = workerRef.current;
 
       const handler = (e: MessageEvent) => {
-        onResult(e.data.output, e.data.colorGrid);
-        worker.removeEventListener("message", handler);
+        if (e.data.output !== undefined) {
+          onResult(e.data.output, e.data.colorGrid);
+          worker.removeEventListener("message", handler);
+        }
       };
       worker.addEventListener("message", handler);
 
@@ -42,6 +50,33 @@ export function useAsciiWorker() {
           gamma: state.adjustments.gamma,
           invert: state.adjustments.invert,
         },
+      });
+    },
+    []
+  );
+
+  const convertFrame = useCallback(
+    (
+      imageData: ImageData,
+      params: ConvertParams,
+      onResult: (output: string, colorGrid: string[][]) => void
+    ) => {
+      if (!workerRef.current) return;
+      const worker = workerRef.current;
+
+      const handler = (e: MessageEvent) => {
+        if (e.data.output !== undefined) {
+          onResult(e.data.output, e.data.colorGrid);
+          worker.removeEventListener("message", handler);
+        }
+      };
+      worker.addEventListener("message", handler);
+
+      worker.postMessage({
+        imageData,
+        charset: params.charset,
+        width: params.asciiWidth,
+        adjustments: params.adjustments,
       });
     },
     []
@@ -81,5 +116,5 @@ export function useAsciiWorker() {
     []
   );
 
-  return { convert, convertBatch };
+  return { convert, convertFrame, convertBatch };
 }

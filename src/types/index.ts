@@ -124,16 +124,17 @@ export interface AsciiFrame {
 }
 
 export interface AnimationState {
-  frames: AsciiFrame[];
+  sourceFps: number;
+  totalFrames: number;
   rawFrames: ImageData[];
   frameTimings: number[];
+  frameCache: (AsciiFrame | undefined)[];
+  pendingFrames: number[];
   currentFrame: number;
   playing: boolean;
   fps: number;
   loop: boolean;
-  converting: boolean;
-  convertProgress: number;
-  convertTotal: number;
+  cachedCount: number;
 }
 
 export interface AppState {

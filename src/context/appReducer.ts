@@ -47,16 +47,17 @@ export const initialState: AppState = {
   conversionTime: 0,
 
   animation: {
-    frames: [],
+    sourceFps: 0,
+    totalFrames: 0,
     rawFrames: [],
     frameTimings: [],
+    frameCache: [],
+    pendingFrames: [],
     currentFrame: 0,
     playing: false,
     fps: 12,
     loop: true,
-    converting: false,
-    convertProgress: 0,
-    convertTotal: 0,
+    cachedCount: 0,
   },
 
   layers: [
@@ -129,13 +130,13 @@ export type Action =
   | { type: "AUTO_OPTIMIZE" }
   | { type: "SETTINGS_UNDO" }
   | { type: "SETTINGS_REDO" }
-  | { type: "SET_ANIMATION_FRAMES"; frames: import("../types").AsciiFrame[]; rawFrames: ImageData[]; timings: number[] }
+  | { type: "INIT_ANIMATION"; rawFrames: ImageData[]; timings: number[]; sourceFps: number }
+  | { type: "CACHE_FRAME"; index: number; frame: import("../types").AsciiFrame }
+  | { type: "SET_PENDING"; indices: number[] }
   | { type: "SET_CURRENT_FRAME"; index: number }
   | { type: "TOGGLE_PLAY" }
   | { type: "SET_ANIMATION_FPS"; fps: number }
   | { type: "TOGGLE_ANIM_LOOP" }
-  | { type: "SET_CONVERT_PROGRESS"; current: number; total: number }
-  | { type: "SET_CONVERTING"; converting: boolean }
   | { type: "STOP_ANIMATION" };
 
 function captureSettings(state: AppState): SettingsSnapshot {
@@ -373,29 +374,46 @@ export function appReducer(state: AppState, action: Action): AppState {
         settingsUndoStack: [...state.settingsUndoStack, currentSnapshot],
       };
     }
-    case "SET_ANIMATION_FRAMES":
+    case "INIT_ANIMATION": {
+      const cache = new Array<import("../types").AsciiFrame | undefined>(action.rawFrames.length);
       return {
         ...state,
         animation: {
           ...state.animation,
-          frames: action.frames,
+          sourceFps: action.sourceFps,
+          totalFrames: action.rawFrames.length,
           rawFrames: action.rawFrames,
           frameTimings: action.timings,
+          frameCache: cache,
+          pendingFrames: [],
           currentFrame: 0,
           playing: false,
+          cachedCount: 0,
         },
-        asciiOutput: action.frames[0]?.output ?? "",
-        colorGrid: action.frames[0]?.colorGrid ?? [],
       };
+    }
+    case "CACHE_FRAME": {
+      const cache = [...state.animation.frameCache];
+      cache[action.index] = action.frame;
+      const cachedCount = cache.filter((f) => f !== undefined).length;
+      const anim = { ...state.animation, frameCache: cache, cachedCount };
+      if (action.index === state.animation.currentFrame) {
+        return { ...state, animation: anim, asciiOutput: action.frame.output, colorGrid: action.frame.colorGrid };
+      }
+      return { ...state, animation: anim };
+    }
+    case "SET_PENDING":
+      return { ...state, animation: { ...state.animation, pendingFrames: action.indices } };
     case "SET_CURRENT_FRAME": {
-      const idx = Math.max(0, Math.min(action.index, state.animation.frames.length - 1));
-      const frame = state.animation.frames[idx];
-      if (!frame) return state;
+      const maxIdx = state.animation.frameCache.length - 1;
+      const idx = Math.max(0, Math.min(action.index, maxIdx));
+      const cached = state.animation.frameCache[idx];
+      if (!cached) return { ...state, animation: { ...state.animation, currentFrame: idx } };
       return {
         ...state,
         animation: { ...state.animation, currentFrame: idx },
-        asciiOutput: frame.output,
-        colorGrid: frame.colorGrid,
+        asciiOutput: cached.output,
+        colorGrid: cached.colorGrid,
       };
     }
     case "TOGGLE_PLAY":
@@ -404,23 +422,21 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, animation: { ...state.animation, fps: Math.max(1, Math.min(60, action.fps)) } };
     case "TOGGLE_ANIM_LOOP":
       return { ...state, animation: { ...state.animation, loop: !state.animation.loop } };
-    case "SET_CONVERT_PROGRESS":
-      return { ...state, animation: { ...state.animation, convertProgress: action.current, convertTotal: action.total } };
-    case "SET_CONVERTING":
-      return { ...state, animation: { ...state.animation, converting: action.converting } };
     case "STOP_ANIMATION":
       return {
         ...state,
         animation: {
-          ...state.animation,
-          playing: false,
-          frames: [],
+          sourceFps: 0,
+          totalFrames: 0,
           rawFrames: [],
           frameTimings: [],
+          frameCache: [],
+          pendingFrames: [],
           currentFrame: 0,
-          converting: false,
-          convertProgress: 0,
-          convertTotal: 0,
+          playing: false,
+          fps: 12,
+          loop: true,
+          cachedCount: 0,
         },
       };
     default:

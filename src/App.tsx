@@ -2,6 +2,7 @@ import { useReducer, useEffect, useCallback, useRef } from "react";
 import { AppContext, DispatchContext } from "./context/AppContext";
 import { appReducer, initialState } from "./context/appReducer";
 import { useAsciiWorker } from "./hooks/useAsciiWorker";
+import type { ConvertParams } from "./hooks/useAsciiWorker";
 import { useDebounce } from "./hooks/useDebounce";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { applyTransform } from "./utils/image";
@@ -18,15 +19,63 @@ import Upload from "./components/panels/Upload";
 import Histogram from "./components/panels/Histogram";
 import AnimationControls from "./components/panels/AnimationControls";
 
+const INITIAL_FAST_COUNT = 3;
+const PREBUFFER_COUNT = 5;
+
 export default function App() {
   const [state, dispatch] = useReducer(appReducer, initialState, (init) => ({
     ...init,
     projects: loadProjects(),
   }));
-  const { convert, convertBatch } = useAsciiWorker();
+  const { convert, convertFrame } = useAsciiWorker();
   const animTimerRef = useRef<number | null>(null);
   const animFrameRef = useRef(state.animation.currentFrame);
   animFrameRef.current = state.animation.currentFrame;
+  const queueRef = useRef<number[]>([]);
+  const processingRef = useRef(false);
+  const generationRef = useRef(0);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  const getConvertParams = useCallback((): ConvertParams => {
+    const charset = state.charPresetId === "custom"
+      ? state.customChars
+      : CHAR_PRESETS.find((p) => p.id === state.charPresetId)?.chars ?? "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,^`' .";
+    return {
+      charset,
+      asciiWidth: state.canvas.asciiWidth,
+      adjustments: {
+        brightness: state.adjustments.brightness,
+        contrast: state.adjustments.contrast,
+        gamma: state.adjustments.gamma,
+        invert: state.adjustments.invert,
+      },
+    };
+  }, [state.charPresetId, state.customChars, state.canvas.asciiWidth, state.adjustments]);
+
+  const processQueue = useCallback(() => {
+    if (processingRef.current || queueRef.current.length === 0) return;
+    const idx = queueRef.current.shift();
+    if (idx === undefined) return;
+
+    const anim = stateRef.current.animation;
+    if (idx < 0 || idx >= anim.rawFrames.length) return;
+    if (anim.frameCache[idx] !== undefined) { processQueue(); return; }
+
+    processingRef.current = true;
+    const rawFrame = anim.rawFrames[idx];
+    const hasTransform = stateRef.current.transform.rotation !== 0 || stateRef.current.transform.flipH || stateRef.current.transform.flipV;
+    const frame = hasTransform ? applyTransform(rawFrame, stateRef.current.transform) : rawFrame;
+    const params = getConvertParams();
+    const gen = generationRef.current;
+
+    convertFrame(frame, params, (output, colorGrid) => {
+      if (generationRef.current !== gen) { processingRef.current = false; return; }
+      dispatch({ type: "CACHE_FRAME", index: idx, frame: { output, colorGrid } });
+      processingRef.current = false;
+      processQueue();
+    });
+  }, [convertFrame, getConvertParams, dispatch]);
 
   const runConversion = useCallback(() => {
     if (!state.imageData) return;
@@ -46,57 +95,90 @@ export default function App() {
     if (state.imageData && state.animation.rawFrames.length === 0) debouncedConvert();
   }, [state.imageData, state.charPresetId, state.customChars, state.canvas.asciiWidth, state.canvas.asciiHeight, state.adjustments, state.transform, debouncedConvert, state.animation.rawFrames.length]);
 
-  // Batch conversion for GIF frames
+  // Fast initial conversion: convert first N frames immediately
   useEffect(() => {
-    if (state.animation.rawFrames.length === 0 || state.animation.converting) return;
+    if (state.animation.rawFrames.length === 0 || state.animation.cachedCount > 0) return;
+    generationRef.current++;
+    queueRef.current = [];
+    processingRef.current = false;
 
-    const charSet = state.charPresetId === "custom"
-      ? state.customChars
-      : CHAR_PRESETS.find((p) => p.id === state.charPresetId)?.chars ?? "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,^`' .";
+    const initialCount = Math.min(INITIAL_FAST_COUNT, state.animation.rawFrames.length);
+    queueRef.current = Array.from({ length: initialCount }, (_, i) => i);
+    processQueue();
+  }, [state.animation.rawFrames, state.animation.cachedCount, processQueue]);
 
-    dispatch({ type: "SET_CONVERTING", converting: true });
-    dispatch({ type: "SET_CONVERT_PROGRESS", current: 0, total: state.animation.rawFrames.length });
-
-    const hasTransform = state.transform.rotation !== 0 || state.transform.flipH || state.transform.flipV;
-    const frames = hasTransform
-      ? state.animation.rawFrames.map((f) => applyTransform(f, state.transform))
-      : state.animation.rawFrames;
-
-    convertBatch(
-      frames,
-      charSet,
-      state.canvas.asciiWidth,
-      {
-        brightness: state.adjustments.brightness,
-        contrast: state.adjustments.contrast,
-        gamma: state.adjustments.gamma,
-        invert: state.adjustments.invert,
-      },
-      (current, total) => {
-        dispatch({ type: "SET_CONVERT_PROGRESS", current, total });
-      },
-      (results) => {
-        const timings = state.animation.frameTimings;
-        dispatch({ type: "SET_ANIMATION_FRAMES", frames: results, rawFrames: state.animation.rawFrames, timings });
-        dispatch({ type: "SET_CONVERTING", converting: false });
+  // Background pre-buffer: when playing, keep next N frames queued
+  useEffect(() => {
+    if (!state.animation.playing || state.animation.rawFrames.length === 0) return;
+    const cur = state.animation.currentFrame;
+    const total = state.animation.rawFrames.length;
+    const needed: number[] = [];
+    for (let i = 1; i <= PREBUFFER_COUNT; i++) {
+      const idx = (cur + i) % total;
+      if (state.animation.frameCache[idx] === undefined && !queueRef.current.includes(idx)) {
+        needed.push(idx);
       }
-    );
-  }, [state.animation.rawFrames, state.charPresetId, state.customChars, state.canvas.asciiWidth, state.adjustments, state.transform, convertBatch, dispatch, state.animation.converting, state.animation.frameTimings]);
+    }
+    if (needed.length > 0) {
+      queueRef.current.push(...needed);
+      processQueue();
+    }
+  }, [state.animation.currentFrame, state.animation.playing, state.animation.rawFrames.length, state.animation.frameCache, processQueue]);
+
+  // Re-convert all when settings change (invalidates cache)
+  const prevSettingsRef = useRef(`${state.charPresetId}|${state.canvas.asciiWidth}|${state.adjustments.brightness}|${state.adjustments.contrast}|${state.adjustments.gamma}|${state.adjustments.invert}`);
+  useEffect(() => {
+    const key = `${state.charPresetId}|${state.canvas.asciiWidth}|${state.adjustments.brightness}|${state.adjustments.contrast}|${state.adjustments.gamma}|${state.adjustments.invert}`;
+    if (prevSettingsRef.current !== key && state.animation.rawFrames.length > 0) {
+      prevSettingsRef.current = key;
+      generationRef.current++;
+      queueRef.current = [];
+      processingRef.current = false;
+
+      // Invalidate cache
+      dispatch({ type: "SET_PENDING", indices: [] });
+      dispatch({ type: "INIT_ANIMATION", rawFrames: state.animation.rawFrames, timings: state.animation.frameTimings, sourceFps: state.animation.sourceFps });
+
+      // Re-queue current frame + buffer
+      const needed = [state.animation.currentFrame];
+      for (let i = 1; i <= PREBUFFER_COUNT; i++) {
+        needed.push((state.animation.currentFrame + i) % state.animation.rawFrames.length);
+      }
+      queueRef.current = [...new Set(needed)];
+      processQueue();
+    }
+  }, [state.charPresetId, state.canvas.asciiWidth, state.adjustments, state.animation.rawFrames, state.animation.frameTimings, state.animation.sourceFps, state.animation.currentFrame, processQueue, dispatch]);
 
   // Animation playback timer
   useEffect(() => {
-    if (state.animation.playing && state.animation.frames.length > 0) {
+    if (state.animation.playing && state.animation.rawFrames.length > 0) {
       const interval = 1000 / state.animation.fps;
       animTimerRef.current = window.setInterval(() => {
-        const nextIdx = animFrameRef.current + 1;
-        if (nextIdx >= state.animation.frames.length) {
-          if (state.animation.loop) {
+        const total = stateRef.current.animation.rawFrames.length;
+        const cur = animFrameRef.current;
+        const nextIdx = cur + 1;
+
+        if (nextIdx >= total) {
+          if (stateRef.current.animation.loop) {
             dispatch({ type: "SET_CURRENT_FRAME", index: 0 });
           } else {
             dispatch({ type: "TOGGLE_PLAY" });
           }
         } else {
-          dispatch({ type: "SET_CURRENT_FRAME", index: nextIdx });
+          // If next frame is cached, advance; otherwise skip ahead to next cached
+          if (stateRef.current.animation.frameCache[nextIdx]) {
+            dispatch({ type: "SET_CURRENT_FRAME", index: nextIdx });
+          } else {
+            // Find next cached frame forward
+            let found = -1;
+            for (let i = nextIdx; i < total; i++) {
+              if (stateRef.current.animation.frameCache[i]) { found = i; break; }
+            }
+            if (found >= 0) {
+              dispatch({ type: "SET_CURRENT_FRAME", index: found });
+            }
+            // If nothing found, stay on current frame (will advance when cache fills)
+          }
         }
       }, interval);
     }
@@ -107,7 +189,7 @@ export default function App() {
         animTimerRef.current = null;
       }
     };
-  }, [state.animation.playing, state.animation.fps, state.animation.frames.length, state.animation.loop]);
+  }, [state.animation.playing, state.animation.fps, state.animation.rawFrames.length, state.animation.loop]);
 
   useKeyboardShortcuts();
 
@@ -157,8 +239,10 @@ export default function App() {
         case "json": downloadBlob(exportProjectJson(state), "ascii-studio-project.json"); break;
         case "clipboard": navigator.clipboard.writeText(state.asciiOutput); break;
         case "gif": {
-          if (state.animation.frames.length > 1) {
-            const blob = exportGif(state.animation.frames, state.animation.frameTimings, state.colorMode, state.canvas.fontSize, state.canvas.lineHeight, state.canvas.letterSpacing, state.monoColor, bg);
+          if (state.animation.cachedCount > 1) {
+            const cachedFrames = state.animation.frameCache.filter((f): f is import("./types").AsciiFrame => f !== undefined);
+            const cachedTimings = state.animation.frameTimings.filter((_, i) => state.animation.frameCache[i] !== undefined);
+            const blob = exportGif(cachedFrames, cachedTimings, state.colorMode, state.canvas.fontSize, state.canvas.lineHeight, state.canvas.letterSpacing, state.monoColor, bg);
             downloadBlob(blob, "ascii-animation.gif");
           }
           break;
@@ -169,7 +253,7 @@ export default function App() {
     return () => document.removeEventListener("ascii-studio-export", handler);
   }, [state]);
 
-  const isAnimating = state.animation.frames.length > 0;
+  const isAnimating = state.animation.rawFrames.length > 0;
 
   return (
     <AppContext.Provider value={state}>

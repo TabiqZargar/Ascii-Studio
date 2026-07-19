@@ -6,6 +6,7 @@ import { decodeGif } from "../../utils/gifDecoder";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ACCEPTED_EXTENSIONS = ".jpg,.jpeg,.png,.webp,.gif";
+const TARGET_FPS = 12;
 
 export default function Upload() {
   const dispatch = useDispatch();
@@ -34,42 +35,48 @@ export default function Upload() {
         const buffer = await file.arrayBuffer();
         const gif = decodeGif(buffer);
 
-        dispatch({ type: "SET_CONVERTING", converting: true });
-        dispatch({ type: "SET_CONVERT_PROGRESS", current: 0, total: gif.frames.length });
+        // Analyze source FPS from frame delays
+        const avgDelay = gif.frames.reduce((sum, f) => sum + f.delayMs, 0) / gif.frames.length;
+        const sourceFps = Math.round(1000 / avgDelay);
 
-        // Downscale first frame to get dimensions for ascii conversion
-        const firstFrameScaled = downscaleImage(gif.frames[0].imageData, 2048);
-        const small = downscaleForDisplay(firstFrameScaled, 400);
-        const analysis = analyzeImage(firstFrameScaled);
+        // Downsample frames to target FPS
+        const sourceInterval = 1000 / sourceFps;
+        const targetInterval = 1000 / TARGET_FPS;
+        const frameStep = Math.max(1, Math.round(targetInterval / sourceInterval));
 
-        // Set initial image (first frame)
+        const sampledIndices: number[] = [];
+        for (let i = 0; i < gif.frames.length; i += frameStep) {
+          sampledIndices.push(i);
+        }
+
+        // Downscale each sampled frame
+        const rawFrames: ImageData[] = [];
+        const timings: number[] = [];
+        for (const idx of sampledIndices) {
+          rawFrames.push(downscaleImage(gif.frames[idx].imageData, 2048));
+          timings.push(gif.frames[idx].delayMs);
+        }
+
+        // Initialize animation state (no converted frames yet)
+        dispatch({ type: "INIT_ANIMATION", rawFrames, timings, sourceFps });
+
+        // Set first frame as the display image
+        const firstFrame = gif.frames[0].imageData;
+        const firstScaled = downscaleImage(firstFrame, 2048);
+        const small = downscaleForDisplay(firstScaled, 400);
+        const analysis = analyzeImage(firstScaled);
+
         const canvas = document.createElement("canvas");
-        canvas.width = gif.frames[0].imageData.width;
-        canvas.height = gif.frames[0].imageData.height;
+        canvas.width = firstFrame.width;
+        canvas.height = firstFrame.height;
         const ctx = canvas.getContext("2d")!;
-        ctx.putImageData(gif.frames[0].imageData, 0, 0);
+        ctx.putImageData(firstFrame, 0, 0);
         const thumbUrl = canvas.toDataURL("image/png");
 
-        dispatch({ type: "SET_IMAGE", url: thumbUrl, imageData: firstFrameScaled, smallImageData: small, analysis });
-
-        // Convert all frames via worker batch
-        const scaledFrames = gif.frames.map((f) => downscaleImage(f.imageData, 2048));
-        const timings = gif.frames.map((f) => f.delayMs);
-
-        // Store raw frames for re-conversion when settings change
-        const rawFrames = gif.frames.map((f) => f.imageData);
-
-        // Store animation data - frames will be converted by App.tsx
-        dispatch({
-          type: "SET_ANIMATION_FRAMES",
-          frames: scaledFrames.map(() => ({ output: "", colorGrid: [] })),
-          rawFrames,
-          timings,
-        });
+        dispatch({ type: "SET_IMAGE", url: thumbUrl, imageData: firstScaled, smallImageData: small, analysis });
       } catch {
         setError("Failed to process GIF. It may be corrupted.");
         dispatch({ type: "SET_LOADING", loading: false });
-        dispatch({ type: "SET_CONVERTING", converting: false });
       }
     } else {
       const url = URL.createObjectURL(file);
