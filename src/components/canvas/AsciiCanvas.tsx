@@ -109,7 +109,6 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
 
   const handleMouseUp = useCallback(() => setIsPanning(false), []);
 
-  // Fit to screen on new image only
   useEffect(() => {
     fittedRef.current = false;
   }, [state.imageUrl]);
@@ -205,7 +204,7 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
       onMouseLeave={handleMouseUp}
     >
       <div className="absolute right-3 top-3 z-10 flex items-center gap-2 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm">
-        <button onClick={() => dispatch({ type: "SET_ZOOM", zoom: state.zoom - 0.1 })} className="hover:text-zinc-200">−</button>
+        <button onClick={() => dispatch({ type: "SET_ZOOM", zoom: state.zoom - 0.1 })} className="hover:text-zinc-200">-</button>
         <span className="w-12 text-center font-mono">{Math.round(state.zoom * 100)}%</span>
         <button onClick={() => dispatch({ type: "SET_ZOOM", zoom: state.zoom + 0.1 })} className="hover:text-zinc-200">+</button>
         <button
@@ -213,7 +212,7 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
           className="ml-1 hover:text-zinc-200"
           title="Reset"
         >
-          ⟲
+          Reset
         </button>
       </div>
 
@@ -242,7 +241,7 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
                       <span
                         key={x}
                         style={color ? { color } : undefined}
-                        className={state.activeLayerId === "ascii-layer" && !asciiLayer?.locked ? "cursor-crosshair hover:bg-violet-500/30" : ""}
+                        className={state.activeLayerId === "ascii-layer" && !asciiLayer?.locked ? "cursor-crosshair hover:bg-emerald-500/30" : ""}
                         onMouseDown={(e) => handleCharMouseDown(y, x, e)}
                         onMouseEnter={(e) => handleCharMouseEnter(y, x, e)}
                         onMouseUp={() => handleCharMouseUp(y, x)}

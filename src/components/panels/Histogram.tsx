@@ -51,7 +51,7 @@ export default function Histogram({ imageData }: Props) {
     drawChannel(gHist, "#22c55e");
     drawChannel(bHist, "#3b82f6");
     ctx.globalAlpha = 0.8;
-    drawChannel(lumHist, "#ffffff");
+    drawChannel(lumHist, "#10b981");
     ctx.globalAlpha = 1;
   }, [imageData]);
 

@@ -1,6 +1,6 @@
 import type { Project, AppState } from "../types";
 
-const STORAGE_KEY = "glyphlab_projects";
+const STORAGE_KEY = "ascii_studio_projects";
 
 export function saveProject(state: AppState, name: string): Project {
   const project: Project = {
@@ -29,7 +29,15 @@ export function saveProject(state: AppState, name: string): Project {
 export function loadProjects(): Project[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (raw) return JSON.parse(raw);
+    const legacy = localStorage.getItem("glyphlab_projects");
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      localStorage.setItem(STORAGE_KEY, legacy);
+      localStorage.removeItem("glyphlab_projects");
+      return parsed;
+    }
+    return [];
   } catch {
     return [];
   }

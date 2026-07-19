@@ -52,12 +52,10 @@ export default function ComparisonSlider({ asciiOutput, colorGrid }: Props) {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
-      {/* Original image - left */}
       <div className="absolute inset-0 overflow-hidden">
         <img src={state.imageUrl} alt="Original" className="h-full w-full object-contain" draggable={false} />
       </div>
 
-      {/* Processed image - middle (with adjustments) */}
       <div
         className="absolute inset-0 overflow-hidden bg-zinc-900"
         style={{ clipPath: `inset(0 0 0 ${pos1}%)` }}
@@ -67,7 +65,6 @@ export default function ComparisonSlider({ asciiOutput, colorGrid }: Props) {
         </div>
       </div>
 
-      {/* ASCII - right */}
       <div
         className="absolute inset-0 overflow-hidden bg-black"
         style={{ clipPath: `inset(0 0 0 ${pos2}%)` }}
@@ -95,25 +92,22 @@ export default function ComparisonSlider({ asciiOutput, colorGrid }: Props) {
         </div>
       </div>
 
-      {/* Divider 1 */}
       <div
-        className="absolute top-0 bottom-0 z-10 w-1 cursor-ew-resize bg-violet-500"
+        className="absolute top-0 bottom-0 z-10 w-1 cursor-ew-resize bg-emerald-500"
         style={{ left: `${pos1}%` }}
         onMouseDown={handleMouseDown(1)}
       >
-        <div className="absolute -left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-violet-500 text-[10px] text-white">1</div>
+        <div className="absolute -left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white">1</div>
       </div>
 
-      {/* Divider 2 */}
       <div
-        className="absolute top-0 bottom-0 z-10 w-1 cursor-ew-resize bg-violet-400"
+        className="absolute top-0 bottom-0 z-10 w-1 cursor-ew-resize bg-emerald-400"
         style={{ left: `${pos2}%` }}
         onMouseDown={handleMouseDown(2)}
       >
-        <div className="absolute -left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-violet-400 text-[10px] text-white">2</div>
+        <div className="absolute -left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-400 text-[10px] text-white">2</div>
       </div>
 
-      {/* Labels */}
       <div className="absolute left-3 top-3 z-20 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm">Original</div>
       <div className="absolute top-3 z-20 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm" style={{ left: `${(pos1 + pos2) / 2}%`, transform: "translateX(-50%)" }}>Processed</div>
       <div className="absolute right-3 top-3 z-20 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm">ASCII</div>

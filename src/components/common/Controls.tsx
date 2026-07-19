@@ -23,7 +23,7 @@ export function Slider({ label, value, min, max, step, format, onChange }: Slide
         step={step}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full accent-violet-500"
+        className="w-full accent-emerald-500"
       />
     </div>
   );
@@ -41,7 +41,7 @@ export function Toggle({ label, checked, onChange }: ToggleProps) {
       <span className="text-xs text-zinc-400">{label}</span>
       <div
         className={`relative h-5 w-9 rounded-full transition-colors ${
-          checked ? "bg-violet-600" : "bg-zinc-700"
+          checked ? "bg-emerald-600" : "bg-zinc-700"
         }`}
         onClick={() => onChange(!checked)}
       >
@@ -69,7 +69,7 @@ export function Select({ label, value, options, onChange }: SelectProps) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-300 outline-none focus:border-violet-500"
+        className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-300 outline-none focus:border-emerald-500"
       >
         {options.map((o) => (
           <option key={o.id} value={o.id}>

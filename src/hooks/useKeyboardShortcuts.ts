@@ -23,7 +23,7 @@ export function useKeyboardShortcuts() {
       }
       if (ctrl && e.key === "s") {
         e.preventDefault();
-        document.dispatchEvent(new CustomEvent("glyphlab-save"));
+        document.dispatchEvent(new CustomEvent("ascii-studio-save"));
       }
       if (e.key === " " && !ctrl && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
         e.preventDefault();

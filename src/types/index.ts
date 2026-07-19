@@ -1,11 +1,10 @@
-// ── Character Sets ──
 export interface CharPreset {
   id: string;
   name: string;
   chars: string;
+  preview: string;
 }
 
-// ── Color ──
 export type ColorMode = "mono" | "original" | "gradient";
 
 export interface GradientPreset {
@@ -14,7 +13,6 @@ export interface GradientPreset {
   colors: string[];
 }
 
-// ── Canvas ──
 export interface CanvasSettings {
   asciiWidth: number;
   asciiHeight: number;
@@ -24,7 +22,6 @@ export interface CanvasSettings {
   fontFamily: string;
 }
 
-// ── Image Adjustments ──
 export interface ImageAdjustments {
   brightness: number;
   contrast: number;
@@ -38,7 +35,6 @@ export interface ImageAdjustments {
   edgeDetection: boolean;
 }
 
-// ── Background ──
 export type BackgroundType = "black" | "white" | "transparent" | "custom" | "gradient";
 
 export interface BackgroundSettings {
@@ -47,7 +43,6 @@ export interface BackgroundSettings {
   gradientColors: [string, string];
 }
 
-// ── Crop / Transform ──
 export interface CropRect {
   x: number;
   y: number;
@@ -61,7 +56,6 @@ export interface Transform {
   flipV: boolean;
 }
 
-// ── Layers ──
 export type LayerType = "image" | "ascii" | "text";
 
 export interface Layer {
@@ -73,15 +67,7 @@ export interface Layer {
   opacity: number;
 }
 
-// ── Editor ──
-export type BrushType =
-  | "brush"
-  | "rectangle"
-  | "circle"
-  | "line"
-  | "fill"
-  | "text"
-  | "eraser";
+export type BrushType = "brush" | "rectangle" | "circle" | "line" | "fill" | "text" | "eraser";
 
 export interface EditorCell {
   row: number;
@@ -89,19 +75,20 @@ export interface EditorCell {
   char: string;
 }
 
-// ── Presets ──
 export interface StylePreset {
   id: string;
   name: string;
+  icon: string;
   charPresetId: string;
   colorMode: ColorMode;
   gradientId?: string;
   monoColor: string;
   fontSize: number;
+  brightness: number;
+  contrast: number;
   background: BackgroundType;
 }
 
-// ── Project ──
 export interface Project {
   id: string;
   name: string;
@@ -119,10 +106,19 @@ export interface Project {
   editorGrid: EditorCell[][];
 }
 
-// ── App State ──
+export interface ImageAnalysis {
+  score: "excellent" | "good" | "difficult";
+  label: string;
+  detail: string;
+  suggestedPreset?: string;
+  avgBrightness: number;
+  avgContrast: number;
+}
+
 export interface AppState {
   imageUrl: string | null;
   imageData: ImageData | null;
+  imageAnalysis: ImageAnalysis | null;
 
   charPresetId: string;
   customChars: string;
@@ -138,6 +134,7 @@ export interface AppState {
   asciiOutput: string;
   colorGrid: string[][];
   loading: boolean;
+  conversionTime: number;
 
   layers: Layer[];
   activeLayerId: string;
@@ -154,8 +151,8 @@ export interface AppState {
   panY: number;
   fullscreen: boolean;
   comparisonMode: boolean;
-  comparisonPosition: number;
 
+  favoritePresets: string[];
   projects: Project[];
   activeProjectId: string | null;
 }

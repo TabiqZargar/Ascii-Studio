@@ -101,3 +101,66 @@ export function gridFromAscii(ascii: string, charWidth: number, charHeight: numb
   }
   return grid;
 }
+
+export function downscaleForDisplay(imageData: ImageData, maxDim: number): ImageData {
+  return downscaleImage(imageData, maxDim);
+}
+
+import type { ImageAnalysis } from "../types";
+
+export function analyzeImage(imageData: ImageData): ImageAnalysis {
+  const { data, width, height } = imageData;
+  const totalPixels = width * height;
+  let brightnessSum = 0;
+  let contrastSum = 0;
+  let edgeCount = 0;
+
+  const gray = new Uint8ClampedArray(totalPixels);
+  for (let i = 0; i < data.length; i += 4) {
+    const lum = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    gray[i / 4] = lum;
+    brightnessSum += lum;
+  }
+
+  const avgBrightness = brightnessSum / totalPixels;
+
+  for (let i = 0; i < gray.length; i++) {
+    contrastSum += Math.abs(gray[i] - avgBrightness);
+  }
+  const avgContrast = contrastSum / totalPixels;
+
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      const gx = -gray[(idx - width - 1)] + gray[(idx - width + 1)] - 2 * gray[idx - 1] + 2 * gray[idx + 1] - gray[(idx + width - 1)] + gray[(idx + width + 1)];
+      const gy = -gray[(idx - width - 1)] - 2 * gray[(idx - width)] - gray[(idx - width + 1)] + gray[(idx + width - 1)] + 2 * gray[(idx + width)] + gray[(idx + width + 1)];
+      if (Math.sqrt(gx * gx + gy * gy) > 50) edgeCount++;
+    }
+  }
+
+  const edgeRatio = edgeCount / totalPixels;
+  let score: ImageAnalysis["score"];
+  let label: string;
+  let detail: string;
+
+  if (avgContrast > 50 && avgBrightness > 40 && avgBrightness < 220) {
+    score = "excellent";
+    label = "Great for ASCII";
+    detail = "Good contrast and brightness";
+  } else if (avgContrast > 30 || (avgBrightness > 30 && avgBrightness < 230)) {
+    score = "good";
+    label = "Good candidate";
+    detail = "May need some adjustments";
+  } else {
+    score = "difficult";
+    label = "Needs adjustment";
+    detail = "Low contrast or extreme brightness";
+  }
+
+  let suggestedPreset: string | undefined = undefined;
+  if (edgeRatio > 0.15) suggestedPreset = "clean";
+  else if (avgBrightness < 80) suggestedPreset = "noir";
+  else if (avgBrightness > 180) suggestedPreset = "high-contrast";
+
+  return { score, label, detail, suggestedPreset, avgBrightness, avgContrast };
+}

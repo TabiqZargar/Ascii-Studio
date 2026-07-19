@@ -115,6 +115,7 @@ export function exportHtml(
   const html = `<!DOCTYPE html>
 <html>
 <head>
+<title>ASCII Studio - ASCII Art</title>
 <style>
   body { margin:0; padding:20px; background:${bgFill}; }
   pre {
@@ -135,7 +136,8 @@ export function exportHtml(
 export function exportProjectJson(state: Record<string, unknown>): Blob {
   const project = {
     version: "1.0",
-    name: "glyphlab-project",
+    app: "ascii-studio",
+    name: "ascii-studio-project",
     charPresetId: state.charPresetId,
     customChars: state.customChars,
     colorMode: state.colorMode,

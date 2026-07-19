@@ -1,9 +1,10 @@
-import type { AppState, EditorCell } from "../types";
 import { CHAR_PRESETS, GRADIENT_PRESETS, STYLE_PRESETS } from "../data/presets";
+import type { AppState, EditorCell, ImageAnalysis } from "../types";
 
 export const initialState: AppState = {
   imageUrl: null,
   imageData: null,
+  imageAnalysis: null,
 
   charPresetId: "classic",
   customChars: "",
@@ -13,11 +14,11 @@ export const initialState: AppState = {
 
   canvas: {
     asciiWidth: 100,
-    asciiHeight: 60,
+    asciiHeight: 50,
     fontSize: 6,
     lineHeight: 1,
     letterSpacing: 0,
-    fontFamily: "ui-monospace, Consolas, monospace",
+    fontFamily: "'Fira Code', monospace",
   },
 
   adjustments: {
@@ -39,15 +40,12 @@ export const initialState: AppState = {
     gradientColors: ["#000000", "#1a1a2e"],
   },
 
-  transform: {
-    rotation: 0,
-    flipH: false,
-    flipV: false,
-  },
+  transform: { rotation: 0, flipH: false, flipV: false },
 
   asciiOutput: "",
   colorGrid: [],
   loading: false,
+  conversionTime: 0,
 
   layers: [
     { id: "image-layer", type: "image", name: "Image", visible: true, locked: false, opacity: 1 },
@@ -68,15 +66,16 @@ export const initialState: AppState = {
   panY: 0,
   fullscreen: false,
   comparisonMode: false,
-  comparisonPosition: 50,
 
+  favoritePresets: JSON.parse(localStorage.getItem("ascii_studio_favorites") ?? "[]"),
   projects: [],
   activeProjectId: null,
 };
 
 export type Action =
-  | { type: "SET_IMAGE"; url: string; imageData: ImageData }
+  | { type: "SET_IMAGE"; url: string; imageData: ImageData; smallImageData?: ImageData; analysis?: ImageAnalysis | null }
   | { type: "CLEAR_IMAGE" }
+  | { type: "SET_IMAGE_ANALYSIS"; analysis: ImageAnalysis | null }
   | { type: "SET_CHAR_PRESET"; id: string }
   | { type: "SET_CUSTOM_CHARS"; chars: string }
   | { type: "SET_COLOR_MODE"; mode: AppState["colorMode"] }
@@ -87,7 +86,7 @@ export type Action =
   | { type: "RESET_ADJUSTMENTS" }
   | { type: "SET_BACKGROUND"; bg: Partial<AppState["background"]> }
   | { type: "SET_TRANSFORM"; t: Partial<AppState["transform"]> }
-  | { type: "SET_ASCII"; output: string; colorGrid: string[][] }
+  | { type: "SET_ASCII"; output: string; colorGrid: string[][]; time: number }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_LAYERS"; layers: AppState["layers"] }
   | { type: "TOGGLE_LAYER"; id: string }
@@ -108,229 +107,129 @@ export type Action =
   | { type: "SET_PAN"; x: number; y: number }
   | { type: "TOGGLE_FULLSCREEN" }
   | { type: "TOGGLE_COMPARISON" }
-  | { type: "SET_COMPARISON_POS"; pos: number }
+  | { type: "TOGGLE_FAVORITE"; presetId: string }
   | { type: "LOAD_PROJECT"; state: Partial<AppState> }
   | { type: "SET_PROJECTS"; projects: AppState["projects"] }
-  | { type: "SET_STYLE_PRESET"; presetId: string };
+  | { type: "SET_STYLE_PRESET"; presetId: string }
+  | { type: "SURPRISE_ME" }
+  | { type: "AUTO_ENHANCE" };
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "SET_IMAGE":
-      return {
-        ...state,
-        imageUrl: action.url,
-        imageData: action.imageData,
-        editorGrid: [],
-        undoStack: [],
-        redoStack: [],
-      };
-
+      return { ...state, imageUrl: action.url, imageData: action.imageData, imageAnalysis: (action as { analysis?: ImageAnalysis | null }).analysis ?? state.imageAnalysis, editorGrid: [], undoStack: [], redoStack: [] };
     case "CLEAR_IMAGE":
-      return {
-        ...state,
-        imageUrl: null,
-        imageData: null,
-        asciiOutput: "",
-        colorGrid: [],
-        editorGrid: [],
-        undoStack: [],
-        redoStack: [],
-      };
-
+      return { ...state, imageUrl: null, imageData: null, imageAnalysis: null, asciiOutput: "", colorGrid: [], editorGrid: [], undoStack: [], redoStack: [] };
+    case "SET_IMAGE_ANALYSIS":
+      return { ...state, imageAnalysis: action.analysis };
     case "SET_CHAR_PRESET":
       return { ...state, charPresetId: action.id };
-
-    case "SET_CUSTOM_CHARS": {
-      const saved = JSON.parse(localStorage.getItem("glyphlab_custom_chars") ?? "[]") as string[];
-      if (action.chars && !saved.includes(action.chars)) {
-        saved.push(action.chars);
-        if (saved.length > 20) saved.shift();
-        localStorage.setItem("glyphlab_custom_chars", JSON.stringify(saved));
-      }
-      return { ...state, customChars: action.chars };
-    }
-
+    case "SET_CUSTOM_CHARS":
+      return (() => {
+        const saved = JSON.parse(localStorage.getItem("ascii_studio_custom_chars") ?? "[]") as string[];
+        if (action.chars && !saved.includes(action.chars)) {
+          saved.push(action.chars);
+          if (saved.length > 20) saved.shift();
+          localStorage.setItem("ascii_studio_custom_chars", JSON.stringify(saved));
+        }
+        return { ...state, customChars: action.chars };
+      })();
     case "SET_COLOR_MODE":
       return { ...state, colorMode: action.mode };
-
     case "SET_GRADIENT":
       return { ...state, gradientId: action.id };
-
     case "SET_MONO_COLOR":
       return { ...state, monoColor: action.color };
-
     case "SET_CANVAS":
       return { ...state, canvas: { ...state.canvas, ...action.canvas } };
-
     case "SET_ADJUSTMENTS":
       return { ...state, adjustments: { ...state.adjustments, ...action.adj } };
-
     case "RESET_ADJUSTMENTS":
-      return {
-        ...state,
-        adjustments: {
-          brightness: 0,
-          contrast: 1,
-          saturation: 1,
-          exposure: 1,
-          gamma: 1,
-          sharpness: 0,
-          blur: 0,
-          invert: false,
-          grayscale: false,
-          edgeDetection: false,
-        },
-      };
-
+      return { ...state, adjustments: { brightness: 0, contrast: 1, saturation: 1, exposure: 1, gamma: 1, sharpness: 0, blur: 0, invert: false, grayscale: false, edgeDetection: false } };
     case "SET_BACKGROUND":
       return { ...state, background: { ...state.background, ...action.bg } };
-
     case "SET_TRANSFORM":
       return { ...state, transform: { ...state.transform, ...action.t } };
-
     case "SET_ASCII":
-      return {
-        ...state,
-        asciiOutput: action.output,
-        colorGrid: action.colorGrid,
-        loading: false,
-      };
-
+      return { ...state, asciiOutput: action.output, colorGrid: action.colorGrid, loading: false, conversionTime: action.time };
     case "SET_LOADING":
       return { ...state, loading: action.loading };
-
     case "SET_LAYERS":
       return { ...state, layers: action.layers };
-
     case "TOGGLE_LAYER":
-      return {
-        ...state,
-        layers: state.layers.map((l) =>
-          l.id === action.id ? { ...l, visible: !l.visible } : l
-        ),
-      };
-
+      return { ...state, layers: state.layers.map((l) => l.id === action.id ? { ...l, visible: !l.visible } : l) };
     case "LOCK_LAYER":
-      return {
-        ...state,
-        layers: state.layers.map((l) =>
-          l.id === action.id ? { ...l, locked: !l.locked } : l
-        ),
-      };
-
+      return { ...state, layers: state.layers.map((l) => l.id === action.id ? { ...l, locked: !l.locked } : l) };
     case "SET_ACTIVE_LAYER":
       return { ...state, activeLayerId: action.id };
-
     case "ADD_LAYER":
       return { ...state, layers: [...state.layers, action.layer] };
-
     case "REMOVE_LAYER":
-      return {
-        ...state,
-        layers: state.layers.filter((l) => l.id !== action.id),
-        activeLayerId:
-          state.activeLayerId === action.id
-            ? state.layers[0]?.id ?? ""
-            : state.activeLayerId,
-      };
-
+      return { ...state, layers: state.layers.filter((l) => l.id !== action.id), activeLayerId: state.activeLayerId === action.id ? state.layers[0]?.id ?? "" : state.activeLayerId };
     case "MOVE_LAYER": {
       const idx = state.layers.findIndex((l) => l.id === action.id);
       if (idx === -1) return state;
       const newIdx = action.direction === "up" ? idx + 1 : idx - 1;
       if (newIdx < 0 || newIdx >= state.layers.length) return state;
-      const newLayers = [...state.layers];
-      [newLayers[idx], newLayers[newIdx]] = [newLayers[newIdx], newLayers[idx]];
-      return { ...state, layers: newLayers };
+      const nl = [...state.layers];
+      [nl[idx], nl[newIdx]] = [nl[newIdx], nl[idx]];
+      return { ...state, layers: nl };
     }
-
     case "SET_BRUSH_TYPE":
       return { ...state, brushType: action.brush };
-
     case "SET_BRUSH_CHAR":
       return { ...state, brushChar: action.char };
-
     case "SET_BRUSH_SIZE":
       return { ...state, brushSize: action.size };
-
     case "PAINT_CELLS": {
       const grid = state.editorGrid.map((r) => [...r]);
       for (const cell of action.cells) {
         while (grid.length <= cell.row) grid.push([]);
-        while (grid[cell.row].length <= cell.col) {
-          grid[cell.row].push({ row: cell.row, col: cell.col, char: " " });
-        }
+        while (grid[cell.row].length <= cell.col) grid[cell.row].push({ row: cell.row, col: grid[cell.row].length, char: " " });
         grid[cell.row][cell.col] = cell;
       }
       return { ...state, editorGrid: grid };
     }
-
     case "FILL_CELLS": {
       const grid = state.editorGrid.map((r) => [...r]);
       for (const cell of action.cells) {
         while (grid.length <= cell.row) grid.push([]);
-        while (grid[cell.row].length <= cell.col) {
-          grid[cell.row].push({ row: cell.row, col: cell.col, char: " " });
-        }
+        while (grid[cell.row].length <= cell.col) grid[cell.row].push({ row: cell.row, col: grid[cell.row].length, char: " " });
         grid[cell.row][cell.col] = cell;
       }
       return { ...state, editorGrid: grid };
     }
-
     case "PUSH_UNDO":
-      return {
-        ...state,
-        undoStack: [...state.undoStack.slice(-49), action.grid],
-        redoStack: [],
-      };
-
+      return { ...state, undoStack: [...state.undoStack.slice(-49), action.grid], redoStack: [] };
     case "UNDO": {
       if (state.undoStack.length === 0) return state;
       const prev = state.undoStack[state.undoStack.length - 1];
-      return {
-        ...state,
-        undoStack: state.undoStack.slice(0, -1),
-        redoStack: [...state.redoStack, state.editorGrid],
-        editorGrid: prev,
-      };
+      return { ...state, undoStack: state.undoStack.slice(0, -1), redoStack: [...state.redoStack, state.editorGrid], editorGrid: prev };
     }
-
     case "REDO": {
       if (state.redoStack.length === 0) return state;
       const next = state.redoStack[state.redoStack.length - 1];
-      return {
-        ...state,
-        redoStack: state.redoStack.slice(0, -1),
-        undoStack: [...state.undoStack, state.editorGrid],
-        editorGrid: next,
-      };
+      return { ...state, redoStack: state.redoStack.slice(0, -1), undoStack: [...state.undoStack, state.editorGrid], editorGrid: next };
     }
-
     case "SET_ZOOM":
       return { ...state, zoom: Math.max(0.5, Math.min(5, action.zoom)) };
-
     case "SET_PAN":
       return { ...state, panX: action.x, panY: action.y };
-
     case "TOGGLE_FULLSCREEN":
       return { ...state, fullscreen: !state.fullscreen };
-
     case "TOGGLE_COMPARISON":
-      return {
-        ...state,
-        comparisonMode: !state.comparisonMode,
-        comparisonPosition: 50,
-      };
-
-    case "SET_COMPARISON_POS":
-      return { ...state, comparisonPosition: action.pos };
-
+      return { ...state, comparisonMode: !state.comparisonMode };
+    case "TOGGLE_FAVORITE": {
+      const favs = state.favoritePresets.includes(action.presetId)
+        ? state.favoritePresets.filter((id) => id !== action.presetId)
+        : [...state.favoritePresets, action.presetId];
+      localStorage.setItem("ascii_studio_favorites", JSON.stringify(favs));
+      return { ...state, favoritePresets: favs };
+    }
     case "LOAD_PROJECT":
       return { ...initialState, ...action.state };
-
     case "SET_PROJECTS":
       return { ...state, projects: action.projects };
-
     case "SET_STYLE_PRESET": {
       const preset = STYLE_PRESETS.find((p) => p.id === action.presetId);
       if (!preset) return state;
@@ -341,10 +240,16 @@ export function appReducer(state: AppState, action: Action): AppState {
         gradientId: preset.gradientId ?? state.gradientId,
         monoColor: preset.monoColor,
         canvas: { ...state.canvas, fontSize: preset.fontSize },
+        adjustments: { ...state.adjustments, brightness: preset.brightness, contrast: preset.contrast },
         background: { ...state.background, type: preset.background },
       };
     }
-
+    case "SURPRISE_ME": {
+      const random = STYLE_PRESETS[Math.floor(Math.random() * STYLE_PRESETS.length)];
+      return { ...state, charPresetId: random.charPresetId, colorMode: random.colorMode, gradientId: random.gradientId ?? state.gradientId, monoColor: random.monoColor, canvas: { ...state.canvas, fontSize: random.fontSize }, background: { ...state.background, type: random.background } };
+    }
+    case "AUTO_ENHANCE":
+      return { ...state, adjustments: { ...state.adjustments, brightness: 10, contrast: 1.3, sharpness: 2, saturation: 1.1, gamma: 0.95 } };
     default:
       return state;
   }
