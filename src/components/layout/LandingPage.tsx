@@ -41,8 +41,8 @@ export default function LandingPage({ onEnterWorkspace }: Props) {
   }, [processFile]);
 
   return (
-    <section className="relative z-10 w-full h-screen flex flex-col items-center justify-center transition-all duration-700">
-      <div className="flex flex-col items-center text-center max-w-4xl px-6">
+    <section className="relative z-10 w-full h-screen overflow-y-auto flex flex-col items-center py-24 min-h-screen transition-all duration-700">
+      <div className="flex flex-col items-center text-center max-w-4xl px-6 mt-24">
         <div className="ascii-logo mb-6 select-none font-mono text-[4rem] md:text-[6rem] leading-none text-primary">
           <pre className="text-center">{`  ____  ____  ____
  /  _/ /  _/ /  _/
@@ -82,7 +82,7 @@ _/ /  _/ /  _/ /
         </div>
       </div>
 
-      <div className="absolute bottom-12 left-0 right-0 px-6">
+      <div className="relative px-6 mt-24 w-full max-w-4xl">
         <div className="flex justify-center gap-6 overflow-x-auto pb-4">
           {[
             { name: "Portrait", icon: "👤" },
