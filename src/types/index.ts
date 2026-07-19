@@ -113,6 +113,20 @@ export interface ImageAnalysis {
   suggestedPreset?: string;
   avgBrightness: number;
   avgContrast: number;
+  subjectType?: string;
+  confidence?: number;
+}
+
+export type DitherMode = "none" | "floyd-steinberg" | "bayer";
+
+export interface EngineOptions {
+  dithering: DitherMode;
+  useShapeMatching: boolean;
+  enableHistogramEq: boolean;
+  enableAdaptiveEq: boolean;
+  enableUnsharpMask: boolean;
+  enableNoiseReduction: boolean;
+  edgeEnhance: number;
 }
 
 export interface AppState {
@@ -130,6 +144,7 @@ export interface AppState {
   adjustments: ImageAdjustments;
   background: BackgroundSettings;
   transform: Transform;
+  engine: EngineOptions;
 
   asciiOutput: string;
   colorGrid: string[][];

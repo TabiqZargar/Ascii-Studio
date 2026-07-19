@@ -1,5 +1,15 @@
 import { CHAR_PRESETS, GRADIENT_PRESETS, STYLE_PRESETS } from "../data/presets";
-import type { AppState, EditorCell, ImageAnalysis } from "../types";
+import type { AppState, EditorCell, ImageAnalysis, EngineOptions } from "../types";
+
+const defaultEngine: EngineOptions = {
+  dithering: "floyd-steinberg",
+  useShapeMatching: true,
+  enableHistogramEq: false,
+  enableAdaptiveEq: false,
+  enableUnsharpMask: false,
+  enableNoiseReduction: false,
+  edgeEnhance: 1.5,
+};
 
 export const initialState: AppState = {
   imageUrl: null,
@@ -41,6 +51,7 @@ export const initialState: AppState = {
   },
 
   transform: { rotation: 0, flipH: false, flipV: false },
+  engine: { ...defaultEngine },
 
   asciiOutput: "",
   colorGrid: [],
@@ -112,7 +123,9 @@ export type Action =
   | { type: "SET_PROJECTS"; projects: AppState["projects"] }
   | { type: "SET_STYLE_PRESET"; presetId: string }
   | { type: "SURPRISE_ME" }
-  | { type: "AUTO_ENHANCE" };
+  | { type: "AUTO_ENHANCE" }
+  | { type: "SET_ENGINE"; engine: Partial<EngineOptions> }
+  | { type: "AUTO_OPTIMIZE"; analysis: ImageAnalysis; engine: Partial<EngineOptions>; adj: Partial<AppState["adjustments"]> };
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -250,6 +263,15 @@ export function appReducer(state: AppState, action: Action): AppState {
     }
     case "AUTO_ENHANCE":
       return { ...state, adjustments: { ...state.adjustments, brightness: 10, contrast: 1.3, sharpness: 2, saturation: 1.1, gamma: 0.95 } };
+    case "SET_ENGINE":
+      return { ...state, engine: { ...state.engine, ...action.engine } };
+    case "AUTO_OPTIMIZE":
+      return {
+        ...state,
+        imageAnalysis: action.analysis,
+        engine: { ...state.engine, ...action.engine },
+        adjustments: { ...state.adjustments, ...action.adj },
+      };
     default:
       return state;
   }
