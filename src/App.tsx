@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useCallback, useRef } from "react";
+import { useReducer, useEffect, useCallback, useRef, useState } from "react";
 import { AppContext, DispatchContext } from "./context/AppContext";
 import { appReducer, initialState } from "./context/appReducer";
 import { useAsciiWorker } from "./hooks/useAsciiWorker";
@@ -10,14 +10,18 @@ import { exportTxt, exportSvg, exportHtml, exportPng, exportProjectJson, exportG
 import { saveProject, loadProjects } from "./utils/storage";
 import { CHAR_PRESETS } from "./data/presets";
 
+import ShaderBackground from "./components/common/ShaderBackground";
+import LandingPage from "./components/layout/LandingPage";
 import Navbar from "./components/layout/Navbar";
-import Sidebar from "./components/layout/Sidebar";
-import Toolbar from "./components/layout/Toolbar";
+import Dock from "./components/layout/Dock";
+import type { DockSection } from "./components/layout/Dock";
+import Inspector from "./components/layout/Inspector";
 import AsciiCanvas from "./components/canvas/AsciiCanvas";
 import ComparisonSlider from "./components/canvas/ComparisonSlider";
+import FloatingZoom from "./components/common/FloatingZoom";
+import Timeline from "./components/panels/Timeline";
 import Upload from "./components/panels/Upload";
 import Histogram from "./components/panels/Histogram";
-import AnimationControls from "./components/panels/AnimationControls";
 
 const INITIAL_FAST_COUNT = 3;
 const PREBUFFER_COUNT = 5;
@@ -36,6 +40,22 @@ export default function App() {
   const generationRef = useRef(0);
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  const [screen, setScreen] = useState<"landing" | "workspace">(
+    state.imageUrl ? "workspace" : "landing"
+  );
+  const [activeDockSection, setActiveDockSection] = useState<DockSection>("characters");
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (state.imageUrl && screen === "landing") {
+      setScreen("workspace");
+    }
+  }, [state.imageUrl, screen]);
+
+  const enterWorkspace = useCallback(() => {
+    setScreen("workspace");
+  }, []);
 
   const getConvertParams = useCallback((): ConvertParams => {
     const charset = state.charPresetId === "custom"
@@ -69,15 +89,13 @@ export default function App() {
     const params = getConvertParams();
     const gen = generationRef.current;
 
-    console.log("[processQueue] converting frame", idx, "queue remaining:", queueRef.current.length);
     convertFrame(frame, params, (output, colorGrid) => {
       if (generationRef.current !== gen) { processingRef.current = false; return; }
-      console.log("[processQueue] CACHE_FRAME dispatched for frame", idx, "output length:", output.length);
       dispatch({ type: "CACHE_FRAME", index: idx, frame: { output, colorGrid } });
       processingRef.current = false;
       processQueue();
     });
-  }, [convertFrame, getConvertParams, dispatch]);
+  }, [convertFrame, getConvertParams]);
 
   const runConversion = useCallback(() => {
     if (!state.imageData) return;
@@ -92,24 +110,20 @@ export default function App() {
 
   const debouncedConvert = useDebounce(runConversion, 80);
 
-  // Single-image conversion
   useEffect(() => {
     if (state.imageData && state.animation.rawFrames.length === 0) debouncedConvert();
   }, [state.imageData, state.charPresetId, state.customChars, state.canvas.asciiWidth, state.canvas.asciiHeight, state.adjustments, state.transform, debouncedConvert, state.animation.rawFrames.length]);
 
-  // Fast initial conversion: convert first N frames immediately
   useEffect(() => {
     if (state.animation.rawFrames.length === 0 || state.animation.cachedCount > 0) return;
     generationRef.current++;
     queueRef.current = [];
     processingRef.current = false;
-
     const initialCount = Math.min(INITIAL_FAST_COUNT, state.animation.rawFrames.length);
     queueRef.current = Array.from({ length: initialCount }, (_, i) => i);
     processQueue();
   }, [state.animation.rawFrames, state.animation.cachedCount, processQueue]);
 
-  // Background pre-buffer: when playing, keep next N frames queued
   useEffect(() => {
     if (!state.animation.playing || state.animation.rawFrames.length === 0) return;
     const cur = state.animation.currentFrame;
@@ -127,7 +141,6 @@ export default function App() {
     }
   }, [state.animation.currentFrame, state.animation.playing, state.animation.rawFrames.length, state.animation.frameCache, processQueue]);
 
-  // Re-convert all when settings change (invalidates cache)
   const prevSettingsRef = useRef(`${state.charPresetId}|${state.canvas.asciiWidth}|${state.adjustments.brightness}|${state.adjustments.contrast}|${state.adjustments.gamma}|${state.adjustments.invert}`);
   useEffect(() => {
     const key = `${state.charPresetId}|${state.canvas.asciiWidth}|${state.adjustments.brightness}|${state.adjustments.contrast}|${state.adjustments.gamma}|${state.adjustments.invert}`;
@@ -136,12 +149,8 @@ export default function App() {
       generationRef.current++;
       queueRef.current = [];
       processingRef.current = false;
-
-      // Invalidate cache
       dispatch({ type: "SET_PENDING", indices: [] });
       dispatch({ type: "INIT_ANIMATION", rawFrames: state.animation.rawFrames, timings: state.animation.frameTimings, sourceFps: state.animation.sourceFps });
-
-      // Re-queue current frame + buffer
       const needed = [state.animation.currentFrame];
       for (let i = 1; i <= PREBUFFER_COUNT; i++) {
         needed.push((state.animation.currentFrame + i) % state.animation.rawFrames.length);
@@ -151,11 +160,9 @@ export default function App() {
     }
   }, [state.charPresetId, state.canvas.asciiWidth, state.adjustments, state.animation.rawFrames, state.animation.frameTimings, state.animation.sourceFps, state.animation.currentFrame, processQueue, dispatch]);
 
-  // Animation playback timer
   useEffect(() => {
     if (state.animation.playing && state.animation.rawFrames.length > 0) {
       const interval = 1000 / state.animation.fps;
-      console.log("[Timer] starting with interval:", interval, "ms, fps:", state.animation.fps);
       animTimerRef.current = window.setInterval(() => {
         const total = stateRef.current.animation.rawFrames.length;
         const cur = animFrameRef.current;
@@ -163,28 +170,20 @@ export default function App() {
 
         if (nextIdx >= total) {
           if (stateRef.current.animation.loop) {
-            console.log("[Timer] wrapping to frame 0");
             dispatch({ type: "SET_CURRENT_FRAME", index: 0 });
           } else {
             dispatch({ type: "TOGGLE_PLAY" });
           }
         } else {
-          // If next frame is cached, advance; otherwise skip ahead to next cached
-          const nextCached = !!stateRef.current.animation.frameCache[nextIdx];
-          if (nextCached) {
-            console.log("[Timer] advancing to frame", nextIdx, "(cached)");
+          if (stateRef.current.animation.frameCache[nextIdx]) {
             dispatch({ type: "SET_CURRENT_FRAME", index: nextIdx });
           } else {
-            // Find next cached frame forward
             let found = -1;
             for (let i = nextIdx; i < total; i++) {
               if (stateRef.current.animation.frameCache[i]) { found = i; break; }
             }
             if (found >= 0) {
-              console.log("[Timer] skipping from", cur, "to frame", found, "(next cached)");
               dispatch({ type: "SET_CURRENT_FRAME", index: found });
-            } else {
-              console.log("[Timer] NO cached frame ahead of", cur, "- cache filled:", stateRef.current.animation.cachedCount, "/", total);
             }
           }
         }
@@ -266,48 +265,55 @@ export default function App() {
   return (
     <AppContext.Provider value={state}>
       <DispatchContext.Provider value={dispatch}>
-        <div className="flex h-screen flex-col bg-[#0c0c0f] text-zinc-200">
-          {!state.fullscreen && <Navbar />}
-          <div className="flex flex-1 overflow-hidden">
-            {!state.fullscreen && (
-              <div className="hidden lg:block">
-                <Sidebar />
-              </div>
-            )}
-            <div className="flex flex-1 flex-col overflow-hidden">
-              {state.comparisonMode ? (
-                <ComparisonSlider asciiOutput={state.asciiOutput} colorGrid={state.colorGrid} />
-              ) : state.imageUrl ? (
-                <AsciiCanvas asciiOutput={state.asciiOutput} colorGrid={state.colorGrid} />
-              ) : (
-                <div className="flex flex-1 items-center justify-center p-8">
-                  <Upload />
+        <div className="h-screen w-screen overflow-hidden bg-background text-on-background">
+          <ShaderBackground />
+
+          {screen === "landing" ? (
+            <LandingPage onEnterWorkspace={enterWorkspace} />
+          ) : (
+            <>
+              {!state.fullscreen && <Navbar />}
+              {!state.fullscreen && <Dock activeSection={activeDockSection} onSectionChange={setActiveDockSection} />}
+              {!state.fullscreen && <Inspector section={activeDockSection} />}
+
+              <main className="absolute inset-0 flex items-center justify-center z-20">
+                <div
+                  ref={canvasContainerRef}
+                  className="relative w-[calc(100%-280px)] h-[calc(100%-160px)] glass-panel rounded-2xl overflow-hidden checkerboard flex items-center justify-center shadow-inner"
+                  style={{ marginLeft: "80px", marginTop: "90px" }}
+                >
+                  {state.comparisonMode ? (
+                    <ComparisonSlider asciiOutput={state.asciiOutput} colorGrid={state.colorGrid} />
+                  ) : state.imageUrl ? (
+                    <AsciiCanvas asciiOutput={state.asciiOutput} colorGrid={state.colorGrid} />
+                  ) : (
+                    <div className="flex flex-1 items-center justify-center p-8">
+                      <Upload />
+                    </div>
+                  )}
+
+                  {state.imageUrl && <FloatingZoom containerRef={canvasContainerRef} />}
+
+                  {state.loading && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-2xl">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary" />
+                        <span className="text-sm text-on-surface-variant">Processing...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </main>
+
+              {isAnimating && <Timeline />}
+
+              {!state.fullscreen && state.imageUrl && (
+                <div className="fixed bottom-3 left-20 right-3 z-30 flex items-center gap-3 rounded-xl bg-surface/60 backdrop-blur-xl border border-outline-variant/20 px-4 py-2" style={{ display: isAnimating ? "none" : undefined }}>
+                  <Histogram imageData={state.imageData} />
                 </div>
               )}
-              {state.loading && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0c0c0f]/80 backdrop-blur-sm">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-700 border-t-emerald-500" />
-                    <span className="text-sm text-zinc-400">Processing...</span>
-                  </div>
-                </div>
-              )}
-              {isAnimating && <AnimationControls />}
-              <div className="flex items-center gap-3 border-t border-zinc-800/50 bg-zinc-900/50 px-4 py-2 backdrop-blur-sm">
-                <Toolbar ascii={state.asciiOutput} disabled={!state.asciiOutput} />
-                {state.imageData && (
-                  <div className="ml-auto">
-                    <Histogram imageData={state.imageData} />
-                  </div>
-                )}
-                {state.imageUrl && !state.fullscreen && (
-                  <button onClick={() => dispatch({ type: "CLEAR_IMAGE" })} className="ml-2 rounded-lg bg-zinc-800/50 px-3 py-1.5 text-xs text-zinc-400 hover:bg-zinc-700/50 hover:text-zinc-200 transition-colors">
-                    New Image
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </DispatchContext.Provider>
     </AppContext.Provider>

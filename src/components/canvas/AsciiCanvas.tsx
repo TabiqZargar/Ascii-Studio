@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, forwardRef } from "react";
 import { useApp, useDispatch } from "../../context/AppContext";
 import type { EditorCell } from "../../types";
 import { getThemeColor } from "../../utils/colorThemes";
@@ -69,7 +69,7 @@ function computeShapeCells(
   return cells;
 }
 
-export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
+const AsciiCanvas = forwardRef<HTMLDivElement, Props>(function AsciiCanvas({ asciiOutput, colorGrid }, ref) {
   const state = useApp();
   const dispatch = useDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -77,6 +77,12 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [shapeStart, setShapeStart] = useState<{ row: number; col: number } | null>(null);
+
+  const setRefs = useCallback((el: HTMLDivElement | null) => {
+    (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    if (typeof ref === "function") ref(el);
+    else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+  }, [ref]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -134,19 +140,6 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
   const lines = asciiOutput ? asciiOutput.split("\n") : [];
   const { fontSize, lineHeight, letterSpacing, fontFamily } = state.canvas;
 
-  let bgStyle = "bg-black";
-  let bgCustom = "";
-  if (state.background.type === "white") bgStyle = "bg-white";
-  else if (state.background.type === "transparent")
-    bgStyle = "bg-[repeating-conic-gradient(#333_0%_25%,transparent_0%_50%)] bg-[length:16px_16px]";
-  else if (state.background.type === "custom") {
-    bgStyle = "";
-    bgCustom = state.background.color;
-  } else if (state.background.type === "gradient") {
-    bgStyle = "";
-    bgCustom = `linear-gradient(135deg, ${state.background.gradientColors[0]}, ${state.background.gradientColors[1]})`;
-  }
-
   const handleCharMouseDown = useCallback((row: number, col: number, e: React.MouseEvent) => {
     if (state.activeLayerId !== "ascii-layer" || asciiLayer?.locked) return;
     e.stopPropagation();
@@ -195,51 +188,14 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
 
   return (
     <div
-      ref={containerRef}
-      className={`relative flex-1 overflow-hidden ${bgStyle}`}
-      style={bgCustom ? { background: bgCustom } : undefined}
+      ref={setRefs}
+      className="relative flex-1 overflow-hidden checkerboard"
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm">
-        {([0.5, 1, 2, 4] as const).map((z) => (
-          <button
-            key={z}
-            onClick={() => dispatch({ type: "SET_ZOOM", zoom: z })}
-            className={`rounded px-1.5 py-0.5 transition-all ${state.zoom === z ? "bg-emerald-600/20 text-emerald-400" : "hover:text-zinc-200"}`}
-          >
-            {Math.round(z * 100)}%
-          </button>
-        ))}
-        <button
-          onClick={() => {
-            if (containerRef.current && asciiOutput) {
-              const rect = containerRef.current.getBoundingClientRect();
-              const lines = asciiOutput.split("\n").length;
-              const maxCols = Math.max(...asciiOutput.split("\n").map((l) => l.length), 1);
-              const scaleX = rect.width / (maxCols * (state.canvas.fontSize * 0.6));
-              const scaleY = rect.height / (lines * state.canvas.fontSize * state.canvas.lineHeight);
-              dispatch({ type: "SET_ZOOM", zoom: Math.max(0.5, Math.min(Math.min(scaleX, scaleY, 4), 4)) });
-            }
-          }}
-          className="rounded px-1.5 py-0.5 hover:text-zinc-200"
-          title="Fit to view"
-        >
-          Fit
-        </button>
-        <div className="mx-1 h-3 w-px bg-zinc-700" />
-        <button
-          onClick={() => { dispatch({ type: "SET_ZOOM", zoom: 1 }); dispatch({ type: "SET_PAN", x: 0, y: 0 }); }}
-          className="rounded px-1.5 py-0.5 hover:text-zinc-200"
-          title="Reset view"
-        >
-          Reset
-        </button>
-      </div>
-
       <div
         className="absolute inset-0 flex items-center justify-center"
         style={{
@@ -249,10 +205,7 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
         }}
       >
         {asciiOutput ? (
-          <pre
-            className="whitespace-pre font-mono text-zinc-300"
-            style={{ fontSize: `${fontSize}px`, lineHeight, letterSpacing: `${letterSpacing}px`, fontFamily }}
-          >
+          <pre className="whitespace-pre font-mono text-zinc-300" style={{ fontSize: `${fontSize}px`, lineHeight, letterSpacing: `${letterSpacing}px`, fontFamily }}>
             {showAscii ? lines.map((line, y) => {
               const cLine = colorGrid[y] ?? [];
               return (
@@ -301,4 +254,6 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
       </div>
     </div>
   );
-}
+});
+
+export default AsciiCanvas;
