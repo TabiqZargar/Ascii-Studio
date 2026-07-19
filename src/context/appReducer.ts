@@ -393,15 +393,14 @@ export function appReducer(state: AppState, action: Action): AppState {
       };
     }
     case "CACHE_FRAME": {
+      console.log(`[Reducer] CACHING frame ${action.index}, frames in cache: ${state.animation.frameCache.length}`);
       const cache = [...state.animation.frameCache];
       cache[action.index] = action.frame;
       const cachedCount = cache.filter((f) => f !== undefined).length;
       const anim = { ...state.animation, frameCache: cache, cachedCount };
       if (action.index === state.animation.currentFrame) {
-        console.log("[Reducer] CACHE_FRAME", action.index, "=== currentFrame", state.animation.currentFrame, "→ updating asciiOutput, output len:", action.frame.output.length);
         return { ...state, animation: anim, asciiOutput: action.frame.output, colorGrid: action.frame.colorGrid };
       }
-      console.log("[Reducer] CACHE_FRAME", action.index, "!== currentFrame", state.animation.currentFrame, "→ cache only, cachedCount:", cachedCount);
       return { ...state, animation: anim };
     }
     case "SET_PENDING":

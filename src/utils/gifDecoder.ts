@@ -196,6 +196,11 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       const pixels = lzwDecodeOptimized(minCodeSize, lzwData, pixelBuffer);
       totalLzwTime += measure("lzw");
 
+      // ASSERTION: LZW Output
+      if (pixels.length !== frameW * frameH) {
+        throw new Error(`LZW Decode failed: expected ${frameW * frameH} pixels, got ${pixels.length}`);
+      }
+
       // Grow buffer if needed
       if (pixels.length > pixelBuffer.length) {
         pixelBuffer = new Uint8Array(pixels.length + (pixels.length >> 1));
@@ -205,6 +210,10 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       mark("composite");
       const framePixelCount = frameW * frameH;
       let pixelIdx = 0;
+
+      // DEBUG: Log frame properties
+      console.log(`[GIF Decoder] Processing frame: ${frames.length}, size: ${frameW}x${frameH}, delay: ${delayMs}, disposal: ${disposalMethod}`);
+
 
       // Fast path: no transparency, palette fits in 256 entries
       if (transparentIndex === -1) {
@@ -298,6 +307,12 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
   }
 
   if (frames.length === 0) throw new Error("No frames found in GIF");
+
+  // ASSERTION: Animation
+  console.log(`[GIF Decoder] Decoded ${frames.length} frames.`);
+  if (frames.length < 2) {
+    throw new Error(`Expected animated GIF, but only found ${frames.length} frame(s)`);
+  }
 
   return {
     width: outW,

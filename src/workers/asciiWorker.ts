@@ -88,11 +88,21 @@ self.onmessage = (e: MessageEvent) => {
       width: number;
       adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean };
     };
+    
+    console.log(`[Worker] Received batch of ${frames.length} frames`);
+    
     const results: { output: string; colorGrid: string[][] }[] = [];
     for (let i = 0; i < frames.length; i++) {
+      // ASSERTION: Frame data
+      if (!frames[i] || frames[i].data.length === 0) {
+        console.error(`[Worker] Empty frame data at index ${i}`);
+        continue;
+      }
+      
       results.push(convertFrame(frames[i], charset, width, adjustments));
       self.postMessage({ type: "progress", current: i + 1, total: frames.length });
     }
+    console.log(`[Worker] Batch processing complete, produced ${results.length} outputs`);
     self.postMessage({ type: "batch-done", results });
     return;
   }
