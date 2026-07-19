@@ -118,6 +118,24 @@ export interface SettingsSnapshot {
   transform: Transform;
 }
 
+export interface AsciiFrame {
+  output: string;
+  colorGrid: string[][];
+}
+
+export interface AnimationState {
+  frames: AsciiFrame[];
+  rawFrames: ImageData[];
+  frameTimings: number[];
+  currentFrame: number;
+  playing: boolean;
+  fps: number;
+  loop: boolean;
+  converting: boolean;
+  convertProgress: number;
+  convertTotal: number;
+}
+
 export interface AppState {
   imageUrl: string | null;
   imageData: ImageData | null;
@@ -137,6 +155,8 @@ export interface AppState {
   colorGrid: string[][];
   loading: boolean;
   conversionTime: number;
+
+  animation: AnimationState;
 
   layers: Layer[];
   activeLayerId: string;

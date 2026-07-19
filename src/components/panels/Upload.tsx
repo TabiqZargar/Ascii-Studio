@@ -2,8 +2,10 @@ import { useRef, useState, useEffect } from "react";
 import { useDispatch } from "../../context/AppContext";
 import { loadImageToCanvas, downscaleImage, downscaleForDisplay, analyzeImage } from "../../utils/image";
 import { SAMPLE_IMAGES } from "../../data/presets";
+import { decodeGif } from "../../utils/gifDecoder";
 
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ACCEPTED_EXTENSIONS = ".jpg,.jpeg,.png,.webp,.gif";
 
 export default function Upload() {
   const dispatch = useDispatch();
@@ -19,22 +21,70 @@ export default function Upload() {
 
   const handleFile = async (file: File) => {
     setError(null);
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError("Please upload a JPG, PNG, or WEBP image.");
+    if (!ACCEPTED_TYPES.includes(file.type) && !file.name.endsWith(".gif")) {
+      setError("Please upload a JPG, PNG, WEBP, or GIF image.");
       return;
     }
-    const url = URL.createObjectURL(file);
-    dispatch({ type: "SET_LOADING", loading: true });
-    try {
-      const canvas = document.createElement("canvas");
-      const imageData = await loadImageToCanvas(url, canvas);
-      const scaled = downscaleImage(imageData, 2048);
-      const small = downscaleForDisplay(scaled, 400);
-      const analysis = analyzeImage(scaled);
-      dispatch({ type: "SET_IMAGE", url, imageData: scaled, smallImageData: small, analysis });
-    } catch {
-      setError("Failed to process image.");
-      dispatch({ type: "SET_LOADING", loading: false });
+
+    const isGif = file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif");
+
+    if (isGif) {
+      dispatch({ type: "SET_LOADING", loading: true });
+      try {
+        const buffer = await file.arrayBuffer();
+        const gif = decodeGif(buffer);
+
+        dispatch({ type: "SET_CONVERTING", converting: true });
+        dispatch({ type: "SET_CONVERT_PROGRESS", current: 0, total: gif.frames.length });
+
+        // Downscale first frame to get dimensions for ascii conversion
+        const firstFrameScaled = downscaleImage(gif.frames[0].imageData, 2048);
+        const small = downscaleForDisplay(firstFrameScaled, 400);
+        const analysis = analyzeImage(firstFrameScaled);
+
+        // Set initial image (first frame)
+        const canvas = document.createElement("canvas");
+        canvas.width = gif.frames[0].imageData.width;
+        canvas.height = gif.frames[0].imageData.height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.putImageData(gif.frames[0].imageData, 0, 0);
+        const thumbUrl = canvas.toDataURL("image/png");
+
+        dispatch({ type: "SET_IMAGE", url: thumbUrl, imageData: firstFrameScaled, smallImageData: small, analysis });
+
+        // Convert all frames via worker batch
+        const scaledFrames = gif.frames.map((f) => downscaleImage(f.imageData, 2048));
+        const timings = gif.frames.map((f) => f.delayMs);
+
+        // Store raw frames for re-conversion when settings change
+        const rawFrames = gif.frames.map((f) => f.imageData);
+
+        // Store animation data - frames will be converted by App.tsx
+        dispatch({
+          type: "SET_ANIMATION_FRAMES",
+          frames: scaledFrames.map(() => ({ output: "", colorGrid: [] })),
+          rawFrames,
+          timings,
+        });
+      } catch {
+        setError("Failed to process GIF. It may be corrupted.");
+        dispatch({ type: "SET_LOADING", loading: false });
+        dispatch({ type: "SET_CONVERTING", converting: false });
+      }
+    } else {
+      const url = URL.createObjectURL(file);
+      dispatch({ type: "SET_LOADING", loading: true });
+      try {
+        const canvas = document.createElement("canvas");
+        const imageData = await loadImageToCanvas(url, canvas);
+        const scaled = downscaleImage(imageData, 2048);
+        const small = downscaleForDisplay(scaled, 400);
+        const analysis = analyzeImage(scaled);
+        dispatch({ type: "SET_IMAGE", url, imageData: scaled, smallImageData: small, analysis });
+      } catch {
+        setError("Failed to process image.");
+        dispatch({ type: "SET_LOADING", loading: false });
+      }
     }
   };
 
@@ -83,7 +133,7 @@ export default function Upload() {
         <input
           ref={inputRef}
           type="file"
-          accept=".jpg,.jpeg,.png,.webp"
+          accept={ACCEPTED_EXTENSIONS}
           onChange={handleChange}
           className="hidden"
         />
@@ -98,7 +148,7 @@ export default function Upload() {
         <p className="mt-1 text-xs text-zinc-500">
           or <span className="text-emerald-400 underline">browse</span> your files
         </p>
-        <p className="mt-2 text-[10px] text-zinc-600">JPG, PNG, or WEBP</p>
+        <p className="mt-2 text-[10px] text-zinc-600">JPG, PNG, WEBP, or GIF</p>
         {error && (
           <p className="mt-3 rounded-md bg-red-500/10 px-3 py-1.5 text-xs text-red-400">{error}</p>
         )}

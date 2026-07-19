@@ -24,7 +24,6 @@ export function useAsciiWorker() {
       if (!state.imageData || !workerRef.current) return;
 
       const chars = getActiveCharString(state);
-
       const worker = workerRef.current;
 
       const handler = (e: MessageEvent) => {
@@ -48,5 +47,39 @@ export function useAsciiWorker() {
     []
   );
 
-  return { convert };
+  const convertBatch = useCallback(
+    (
+      frames: ImageData[],
+      charset: string,
+      asciiWidth: number,
+      adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean },
+      onProgress: (current: number, total: number) => void,
+      onDone: (results: { output: string; colorGrid: string[][] }[]) => void
+    ) => {
+      if (!workerRef.current || frames.length === 0) return;
+
+      const worker = workerRef.current;
+
+      const handler = (e: MessageEvent) => {
+        if (e.data.type === "progress") {
+          onProgress(e.data.current, e.data.total);
+        } else if (e.data.type === "batch-done") {
+          onDone(e.data.results);
+          worker.removeEventListener("message", handler);
+        }
+      };
+      worker.addEventListener("message", handler);
+
+      worker.postMessage({
+        type: "batch",
+        frames,
+        charset,
+        width: asciiWidth,
+        adjustments,
+      });
+    },
+    []
+  );
+
+  return { convert, convertBatch };
 }

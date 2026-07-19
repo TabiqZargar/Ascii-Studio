@@ -1,4 +1,5 @@
 import { getThemeColor } from "./colorThemes";
+import { encodeGif } from "./gifEncoder";
 
 function resolveColor(
   colorMode: string,
@@ -166,7 +167,6 @@ export function exportProjectJson(state: Record<string, unknown>): Blob {
     charPresetId: state.charPresetId,
     customChars: state.customChars,
     colorMode: state.colorMode,
-    gradientId: state.gradientId,
     monoColor: state.monoColor,
     canvas: state.canvas,
     adjustments: state.adjustments,
@@ -185,6 +185,76 @@ export function downloadBlob(blob: Blob, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+interface GifExportFrame {
+  output: string;
+  colorGrid: string[][];
+}
+
+function renderAsciiFrameToCanvas(
+  frame: GifExportFrame,
+  colorMode: string,
+  fontSize: number,
+  lineHeight: number,
+  letterSpacing: number,
+  monoColor: string,
+  bgColor: string
+): ImageData {
+  const lines = frame.output.split("\n");
+  const maxCols = Math.max(...lines.map((l) => l.length), 1);
+  const charW = fontSize * 0.6 + letterSpacing;
+  const charH = fontSize * lineHeight;
+  const w = Math.ceil(Math.max(1, maxCols * charW));
+  const h = Math.ceil(Math.max(1, lines.length * charH));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = bgColor === "transparent" ? "#000" : bgColor;
+  ctx.fillRect(0, 0, w, h);
+  ctx.font = `${fontSize}px monospace`;
+
+  for (let y = 0; y < lines.length; y++) {
+    const line = lines[y];
+    const cLine = frame.colorGrid[y] ?? [];
+    for (let x = 0; x < line.length; x++) {
+      const ch = line[x];
+      if (ch === " ") continue;
+      if (colorMode !== "mono" && cLine[x]) {
+        const match = cLine[x].match(/rgb\((\d+),(\d+),(\d+)\)/);
+        if (match) {
+          ctx.fillStyle = resolveColor(colorMode, +match[1], +match[2], +match[3], monoColor);
+        } else {
+          ctx.fillStyle = monoColor;
+        }
+      } else {
+        ctx.fillStyle = monoColor;
+      }
+      ctx.fillText(ch, x * charW, (y + 1) * charH * 0.85);
+    }
+  }
+
+  return ctx.getImageData(0, 0, w, h);
+}
+
+export function exportGif(
+  frames: GifExportFrame[],
+  timings: number[],
+  colorMode: string,
+  fontSize: number,
+  lineHeight: number,
+  letterSpacing: number,
+  monoColor: string,
+  bgColor: string
+): Blob {
+  const gifFrames = frames.map((frame, i) => ({
+    imageData: renderAsciiFrameToCanvas(frame, colorMode, fontSize, lineHeight, letterSpacing, monoColor, bgColor),
+    delayMs: timings[i] ?? 100,
+  }));
+  return encodeGif(gifFrames);
 }
 
 function escapeXml(s: string): string {

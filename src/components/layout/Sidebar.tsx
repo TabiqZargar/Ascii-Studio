@@ -311,6 +311,8 @@ function AdvancedPanel() {
 }
 
 function ExportPanel() {
+  const state = useApp();
+  const hasAnimation = state.animation.frames.length > 1;
   const formats = [
     { id: "txt", label: "TXT", desc: "Plain text" },
     { id: "png", label: "PNG", desc: "Image" },
@@ -318,6 +320,7 @@ function ExportPanel() {
     { id: "clipboard", label: "Copy", desc: "ASCII text" },
     { id: "copy-html", label: "Copy HTML", desc: "HTML markup" },
     { id: "json", label: "JSON", desc: "Project" },
+    ...(hasAnimation ? [{ id: "gif", label: "GIF", desc: "Animation" }] : []),
   ];
   return (
     <div className="grid grid-cols-2 gap-1">

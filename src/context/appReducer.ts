@@ -46,6 +46,19 @@ export const initialState: AppState = {
   loading: false,
   conversionTime: 0,
 
+  animation: {
+    frames: [],
+    rawFrames: [],
+    frameTimings: [],
+    currentFrame: 0,
+    playing: false,
+    fps: 12,
+    loop: true,
+    converting: false,
+    convertProgress: 0,
+    convertTotal: 0,
+  },
+
   layers: [
     { id: "image-layer", type: "image", name: "Image", visible: true, locked: false, opacity: 1 },
     { id: "ascii-layer", type: "ascii", name: "ASCII", visible: true, locked: false, opacity: 1 },
@@ -115,7 +128,15 @@ export type Action =
   | { type: "AUTO_ENHANCE" }
   | { type: "AUTO_OPTIMIZE" }
   | { type: "SETTINGS_UNDO" }
-  | { type: "SETTINGS_REDO" };
+  | { type: "SETTINGS_REDO" }
+  | { type: "SET_ANIMATION_FRAMES"; frames: import("../types").AsciiFrame[]; rawFrames: ImageData[]; timings: number[] }
+  | { type: "SET_CURRENT_FRAME"; index: number }
+  | { type: "TOGGLE_PLAY" }
+  | { type: "SET_ANIMATION_FPS"; fps: number }
+  | { type: "TOGGLE_ANIM_LOOP" }
+  | { type: "SET_CONVERT_PROGRESS"; current: number; total: number }
+  | { type: "SET_CONVERTING"; converting: boolean }
+  | { type: "STOP_ANIMATION" };
 
 function captureSettings(state: AppState): SettingsSnapshot {
   return {
@@ -352,6 +373,56 @@ export function appReducer(state: AppState, action: Action): AppState {
         settingsUndoStack: [...state.settingsUndoStack, currentSnapshot],
       };
     }
+    case "SET_ANIMATION_FRAMES":
+      return {
+        ...state,
+        animation: {
+          ...state.animation,
+          frames: action.frames,
+          rawFrames: action.rawFrames,
+          frameTimings: action.timings,
+          currentFrame: 0,
+          playing: false,
+        },
+        asciiOutput: action.frames[0]?.output ?? "",
+        colorGrid: action.frames[0]?.colorGrid ?? [],
+      };
+    case "SET_CURRENT_FRAME": {
+      const idx = Math.max(0, Math.min(action.index, state.animation.frames.length - 1));
+      const frame = state.animation.frames[idx];
+      if (!frame) return state;
+      return {
+        ...state,
+        animation: { ...state.animation, currentFrame: idx },
+        asciiOutput: frame.output,
+        colorGrid: frame.colorGrid,
+      };
+    }
+    case "TOGGLE_PLAY":
+      return { ...state, animation: { ...state.animation, playing: !state.animation.playing } };
+    case "SET_ANIMATION_FPS":
+      return { ...state, animation: { ...state.animation, fps: Math.max(1, Math.min(60, action.fps)) } };
+    case "TOGGLE_ANIM_LOOP":
+      return { ...state, animation: { ...state.animation, loop: !state.animation.loop } };
+    case "SET_CONVERT_PROGRESS":
+      return { ...state, animation: { ...state.animation, convertProgress: action.current, convertTotal: action.total } };
+    case "SET_CONVERTING":
+      return { ...state, animation: { ...state.animation, converting: action.converting } };
+    case "STOP_ANIMATION":
+      return {
+        ...state,
+        animation: {
+          ...state.animation,
+          playing: false,
+          frames: [],
+          rawFrames: [],
+          frameTimings: [],
+          currentFrame: 0,
+          converting: false,
+          convertProgress: 0,
+          convertTotal: 0,
+        },
+      };
     default:
       return state;
   }
