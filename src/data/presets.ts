@@ -1,4 +1,4 @@
-import type { CharPreset, GradientPreset, StylePreset } from "../types";
+import type { CharPreset, StylePreset } from "../types";
 
 export const CHAR_PRESETS: CharPreset[] = [
   { id: "classic", name: "Classic", chars: "@%#*+=-:.", preview: "@%#*+=-:." },
@@ -11,24 +11,13 @@ export const CHAR_PRESETS: CharPreset[] = [
   { id: "symbols", name: "Symbols", chars: "#@$%&*!?=+<>", preview: "#@$%&*!?=+<>" },
 ];
 
-export const GRADIENT_PRESETS: GradientPreset[] = [
-  { id: "cyberpunk", name: "Cyberpunk", colors: ["#0d0221", "#0f084b", "#26015f", "#a600ff", "#ff2afc", "#ff0099"] },
-  { id: "fire", name: "Fire", colors: ["#1a0000", "#4a0000", "#8b0000", "#cc3300", "#ff6600", "#ffcc00"] },
-  { id: "ocean", name: "Ocean", colors: ["#000428", "#001845", "#023e8a", "#0077b6", "#00b4d8", "#90e0ef"] },
-  { id: "neon", name: "Neon", colors: ["#0a0a0a", "#1a1a2e", "#16213e", "#0f3460", "#e94560", "#00ff88"] },
-  { id: "purple", name: "Purple", colors: ["#0a0011", "#1a0033", "#330066", "#6600cc", "#9933ff", "#cc99ff"] },
-  { id: "terminal", name: "Terminal Green", colors: ["#000000", "#001100", "#003300", "#006600", "#00cc00", "#00ff00"] },
-  { id: "grayscale", name: "Grayscale", colors: ["#000000", "#333333", "#666666", "#999999", "#cccccc", "#ffffff"] },
-  { id: "sunset", name: "Sunset", colors: ["#0c0718", "#2d1b3d", "#6b2fa0", "#d63384", "#ff6b35", "#ffc300"] },
-];
-
 export const STYLE_PRESETS: StylePreset[] = [
   { id: "clean", name: "Clean", icon: "\u2728", charPresetId: "classic", colorMode: "mono", monoColor: "#e4e4e7", fontSize: 6, brightness: 10, contrast: 1.1, background: "black" },
   { id: "portrait", name: "Portrait", icon: "\uD83D\uDC64", charPresetId: "dense", colorMode: "mono", monoColor: "#ffffff", fontSize: 5, brightness: 0, contrast: 1.2, background: "black" },
-  { id: "landscape", name: "Landscape", icon: "\uD83C\uDFDE", charPresetId: "dense", colorMode: "gradient", gradientId: "ocean", monoColor: "#ffffff", fontSize: 5, brightness: 5, contrast: 1.1, background: "black" },
-  { id: "terminal", name: "Terminal", icon: "\uD83D\uDCBB", charPresetId: "classic", colorMode: "gradient", gradientId: "terminal", monoColor: "#00ff00", fontSize: 7, brightness: 0, contrast: 1, background: "black" },
-  { id: "matrix", name: "Matrix", icon: "\uD83D\uDFE9", charPresetId: "dense", colorMode: "gradient", gradientId: "terminal", monoColor: "#00ff00", fontSize: 5, brightness: -10, contrast: 1.3, background: "black" },
-  { id: "crt", name: "CRT", icon: "\uD83D\uDCFA", charPresetId: "classic", colorMode: "gradient", gradientId: "terminal", monoColor: "#33ff33", fontSize: 6, brightness: 0, contrast: 1.2, background: "black" },
+  { id: "landscape", name: "Landscape", icon: "\uD83C\uDFDE", charPresetId: "dense", colorMode: "cyberpunk", monoColor: "#ffffff", fontSize: 5, brightness: 5, contrast: 1.1, background: "black" },
+  { id: "terminal", name: "Terminal", icon: "\uD83D\uDCBB", charPresetId: "classic", colorMode: "matrix", monoColor: "#00ff00", fontSize: 7, brightness: 0, contrast: 1, background: "black" },
+  { id: "matrix", name: "Matrix", icon: "\uD83D\uDFE9", charPresetId: "dense", colorMode: "matrix", monoColor: "#00ff00", fontSize: 5, brightness: -10, contrast: 1.3, background: "black" },
+  { id: "crt", name: "CRT", icon: "\uD83D\uDCFA", charPresetId: "classic", colorMode: "matrix", monoColor: "#33ff33", fontSize: 6, brightness: 0, contrast: 1.2, background: "black" },
   { id: "pixel-art", name: "Pixel Art", icon: "\uD83C\uDFAE", charPresetId: "blocks", colorMode: "original", monoColor: "#ffffff", fontSize: 6, brightness: 0, contrast: 1, background: "black" },
   { id: "comic", name: "Comic", icon: "\uD83C\uDFAD", charPresetId: "minimal", colorMode: "mono", monoColor: "#000000", fontSize: 8, brightness: 20, contrast: 1.4, background: "white" },
   { id: "noir", name: "Noir", icon: "\uD83C\uDF19", charPresetId: "dense", colorMode: "mono", monoColor: "#d4d4d8", fontSize: 5, brightness: -15, contrast: 1.5, background: "black" },

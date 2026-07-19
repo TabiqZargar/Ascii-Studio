@@ -1,5 +1,5 @@
-import { CHAR_PRESETS, GRADIENT_PRESETS, STYLE_PRESETS } from "../data/presets";
-import type { AppState, EditorCell, ImageAnalysis } from "../types";
+import { CHAR_PRESETS, STYLE_PRESETS } from "../data/presets";
+import type { AppState, EditorCell, ImageAnalysis, SettingsSnapshot } from "../types";
 
 export const initialState: AppState = {
   imageUrl: null,
@@ -9,7 +9,6 @@ export const initialState: AppState = {
   charPresetId: "classic",
   customChars: "",
   colorMode: "mono",
-  gradientId: "cyberpunk",
   monoColor: "#ffffff",
 
   canvas: {
@@ -60,6 +59,8 @@ export const initialState: AppState = {
   editorGrid: [],
   undoStack: [],
   redoStack: [],
+  settingsUndoStack: [],
+  settingsRedoStack: [],
 
   zoom: 1,
   panX: 0,
@@ -79,7 +80,6 @@ export type Action =
   | { type: "SET_CHAR_PRESET"; id: string }
   | { type: "SET_CUSTOM_CHARS"; chars: string }
   | { type: "SET_COLOR_MODE"; mode: AppState["colorMode"] }
-  | { type: "SET_GRADIENT"; id: string }
   | { type: "SET_MONO_COLOR"; color: string }
   | { type: "SET_CANVAS"; canvas: Partial<AppState["canvas"]> }
   | { type: "SET_ADJUSTMENTS"; adj: Partial<AppState["adjustments"]> }
@@ -112,7 +112,32 @@ export type Action =
   | { type: "SET_PROJECTS"; projects: AppState["projects"] }
   | { type: "SET_STYLE_PRESET"; presetId: string }
   | { type: "SURPRISE_ME" }
-  | { type: "AUTO_ENHANCE" };
+  | { type: "AUTO_ENHANCE" }
+  | { type: "AUTO_OPTIMIZE" }
+  | { type: "SETTINGS_UNDO" }
+  | { type: "SETTINGS_REDO" };
+
+function captureSettings(state: AppState): SettingsSnapshot {
+  return {
+    charPresetId: state.charPresetId,
+    customChars: state.customChars,
+    colorMode: state.colorMode,
+    monoColor: state.monoColor,
+    canvas: { ...state.canvas },
+    adjustments: { ...state.adjustments },
+    background: { ...state.background },
+    transform: { ...state.transform },
+  };
+}
+
+function withSettingsUndo(state: AppState, newState: AppState): AppState {
+  const snapshot = captureSettings(state);
+  return {
+    ...newState,
+    settingsUndoStack: [...state.settingsUndoStack.slice(-49), snapshot],
+    settingsRedoStack: [],
+  };
+}
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -136,8 +161,6 @@ export function appReducer(state: AppState, action: Action): AppState {
       })();
     case "SET_COLOR_MODE":
       return { ...state, colorMode: action.mode };
-    case "SET_GRADIENT":
-      return { ...state, gradientId: action.id };
     case "SET_MONO_COLOR":
       return { ...state, monoColor: action.color };
     case "SET_CANVAS":
@@ -233,23 +256,102 @@ export function appReducer(state: AppState, action: Action): AppState {
     case "SET_STYLE_PRESET": {
       const preset = STYLE_PRESETS.find((p) => p.id === action.presetId);
       if (!preset) return state;
-      return {
+      return withSettingsUndo(state, {
         ...state,
         charPresetId: preset.charPresetId,
         colorMode: preset.colorMode,
-        gradientId: preset.gradientId ?? state.gradientId,
         monoColor: preset.monoColor,
         canvas: { ...state.canvas, fontSize: preset.fontSize },
         adjustments: { ...state.adjustments, brightness: preset.brightness, contrast: preset.contrast },
         background: { ...state.background, type: preset.background },
-      };
+      });
     }
     case "SURPRISE_ME": {
       const random = STYLE_PRESETS[Math.floor(Math.random() * STYLE_PRESETS.length)];
-      return { ...state, charPresetId: random.charPresetId, colorMode: random.colorMode, gradientId: random.gradientId ?? state.gradientId, monoColor: random.monoColor, canvas: { ...state.canvas, fontSize: random.fontSize }, background: { ...state.background, type: random.background } };
+      return withSettingsUndo(state, { ...state, charPresetId: random.charPresetId, colorMode: random.colorMode, monoColor: random.monoColor, canvas: { ...state.canvas, fontSize: random.fontSize }, background: { ...state.background, type: random.background } });
     }
     case "AUTO_ENHANCE":
-      return { ...state, adjustments: { ...state.adjustments, brightness: 10, contrast: 1.3, sharpness: 2, saturation: 1.1, gamma: 0.95 } };
+      return withSettingsUndo(state, { ...state, adjustments: { ...state.adjustments, brightness: 10, contrast: 1.3, sharpness: 2, saturation: 1.1, gamma: 0.95 } });
+    case "AUTO_OPTIMIZE": {
+      if (!state.imageData) return state;
+      const { data, width, height } = state.imageData;
+      const totalPixels = width * height;
+      let brightnessSum = 0;
+      let contrastSum = 0;
+      const gray = new Uint8ClampedArray(totalPixels);
+      for (let i = 0; i < data.length; i += 4) {
+        const lum = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+        gray[i / 4] = lum;
+        brightnessSum += lum;
+      }
+      const avgBrightness = brightnessSum / totalPixels;
+      for (let i = 0; i < gray.length; i++) {
+        contrastSum += Math.abs(gray[i] - avgBrightness);
+      }
+      const avgContrast = contrastSum / totalPixels;
+
+      let brightness = 0;
+      let contrast = 1;
+      let charPresetId = "dense";
+      let colorMode: AppState["colorMode"] = "mono";
+      let asciiWidth = 120;
+
+      if (avgBrightness < 60) { brightness = 20; contrast = 1.3; }
+      else if (avgBrightness < 100) { brightness = 10; contrast = 1.15; }
+      else if (avgBrightness > 200) { brightness = -15; contrast = 1.2; }
+      else if (avgBrightness > 160) { brightness = -5; contrast = 1.1; }
+
+      if (avgContrast < 30) { contrast = Math.max(contrast, 1.4); }
+      else if (avgContrast > 60) { contrast = Math.min(contrast, 1.1); }
+
+      if (width > 800 || height > 800) asciiWidth = 150;
+      else if (width < 300 || height < 300) asciiWidth = 80;
+
+      return withSettingsUndo(state, {
+        ...state,
+        charPresetId,
+        colorMode,
+        monoColor: "#ffffff",
+        canvas: { ...state.canvas, asciiWidth, asciiHeight: Math.round(asciiWidth * 0.5) },
+        adjustments: { ...state.adjustments, brightness, contrast, gamma: 1, sharpness: 0 },
+      });
+    }
+    case "SETTINGS_UNDO": {
+      if (state.settingsUndoStack.length === 0) return state;
+      const prev = state.settingsUndoStack[state.settingsUndoStack.length - 1];
+      const currentSnapshot = captureSettings(state);
+      return {
+        ...state,
+        charPresetId: prev.charPresetId,
+        customChars: prev.customChars,
+        colorMode: prev.colorMode,
+        monoColor: prev.monoColor,
+        canvas: prev.canvas,
+        adjustments: prev.adjustments,
+        background: prev.background,
+        transform: prev.transform,
+        settingsUndoStack: state.settingsUndoStack.slice(0, -1),
+        settingsRedoStack: [...state.settingsRedoStack, currentSnapshot],
+      };
+    }
+    case "SETTINGS_REDO": {
+      if (state.settingsRedoStack.length === 0) return state;
+      const next = state.settingsRedoStack[state.settingsRedoStack.length - 1];
+      const currentSnapshot = captureSettings(state);
+      return {
+        ...state,
+        charPresetId: next.charPresetId,
+        customChars: next.customChars,
+        colorMode: next.colorMode,
+        monoColor: next.monoColor,
+        canvas: next.canvas,
+        adjustments: next.adjustments,
+        background: next.background,
+        transform: next.transform,
+        settingsRedoStack: state.settingsRedoStack.slice(0, -1),
+        settingsUndoStack: [...state.settingsUndoStack, currentSnapshot],
+      };
+    }
     default:
       return state;
   }
@@ -258,8 +360,4 @@ export function appReducer(state: AppState, action: Action): AppState {
 export function getActiveCharString(state: AppState): string {
   if (state.charPresetId === "custom") return state.customChars;
   return CHAR_PRESETS.find((p) => p.id === state.charPresetId)?.chars ?? "@%#*+=-:.";
-}
-
-export function getActiveGradient(state: AppState): string[] {
-  return GRADIENT_PRESETS.find((g) => g.id === state.gradientId)?.colors ?? GRADIENT_PRESETS[0].colors;
 }

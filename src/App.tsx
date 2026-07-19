@@ -7,7 +7,6 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { applyTransform } from "./utils/image";
 import { exportTxt, exportSvg, exportHtml, exportPng, exportProjectJson, downloadBlob } from "./utils/export";
 import { saveProject, loadProjects } from "./utils/storage";
-import { GRADIENT_PRESETS } from "./data/presets";
 
 import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
@@ -79,13 +78,13 @@ export default function App() {
   useEffect(() => {
     const handler = (e: Event) => {
       const format = (e as CustomEvent).detail as string;
-      const gradient = GRADIENT_PRESETS.find((g) => g.id === state.gradientId);
       const bg = state.background.type === "black" ? "#000" : state.background.type === "white" ? "#fff" : "#000";
       switch (format) {
         case "txt": downloadBlob(exportTxt(state.asciiOutput), "ascii-art.txt"); break;
         case "png": exportPng(state.asciiOutput, state.colorGrid, state.colorMode, state.canvas.fontSize, state.canvas.lineHeight, state.canvas.letterSpacing, state.monoColor, bg).then((b) => downloadBlob(b, "ascii-art.png")); break;
-        case "svg": { const g = state.asciiOutput.split("\n").map((l) => l.split("")); downloadBlob(exportSvg(g, state.colorGrid, state.colorMode, state.canvas.fontSize, state.canvas.lineHeight, state.canvas.letterSpacing, state.monoColor, gradient?.colors ?? [], bg), "ascii-art.svg"); break; }
+        case "svg": { const g = state.asciiOutput.split("\n").map((l) => l.split("")); downloadBlob(exportSvg(g, state.colorGrid, state.colorMode, state.canvas.fontSize, state.canvas.lineHeight, state.canvas.letterSpacing, state.monoColor, bg), "ascii-art.svg"); break; }
         case "html": { const g = state.asciiOutput.split("\n").map((l) => l.split("")); downloadBlob(exportHtml(g, state.colorGrid, state.colorMode, state.canvas.fontSize, state.canvas.lineHeight, state.canvas.letterSpacing, state.monoColor, bg), "ascii-art.html"); break; }
+        case "copy-html": { const g = state.asciiOutput.split("\n").map((l) => l.split("")); const htmlBlob = exportHtml(g, state.colorGrid, state.colorMode, state.canvas.fontSize, state.canvas.lineHeight, state.canvas.letterSpacing, state.monoColor, bg); htmlBlob.text().then((t) => navigator.clipboard.writeText(t)); break; }
         case "json": downloadBlob(exportProjectJson(state), "ascii-studio-project.json"); break;
         case "clipboard": navigator.clipboard.writeText(state.asciiOutput); break;
       }
@@ -113,6 +112,14 @@ export default function App() {
               ) : (
                 <div className="flex flex-1 items-center justify-center p-8">
                   <Upload />
+                </div>
+              )}
+              {state.loading && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0c0c0f]/80 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-700 border-t-emerald-500" />
+                    <span className="text-sm text-zinc-400">Processing...</span>
+                  </div>
                 </div>
               )}
               <div className="flex items-center gap-3 border-t border-zinc-800/50 bg-zinc-900/50 px-4 py-2 backdrop-blur-sm">

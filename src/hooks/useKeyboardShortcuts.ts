@@ -17,6 +17,14 @@ export function useKeyboardShortcuts() {
         e.preventDefault();
         dispatch({ type: "REDO" });
       }
+      if (ctrl && e.altKey && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        dispatch({ type: "SETTINGS_UNDO" });
+      }
+      if (ctrl && e.altKey && e.key === "z" && e.shiftKey) {
+        e.preventDefault();
+        dispatch({ type: "SETTINGS_REDO" });
+      }
       if (ctrl && e.key === "y") {
         e.preventDefault();
         dispatch({ type: "REDO" });
@@ -24,6 +32,15 @@ export function useKeyboardShortcuts() {
       if (ctrl && e.key === "s") {
         e.preventDefault();
         document.dispatchEvent(new CustomEvent("ascii-studio-save"));
+      }
+      if (ctrl && e.key === "o") {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("ascii-studio-upload"));
+      }
+      if (ctrl && e.key === "0") {
+        e.preventDefault();
+        dispatch({ type: "SET_ZOOM", zoom: 1 });
+        dispatch({ type: "SET_PAN", x: 0, y: 0 });
       }
       if (e.key === " " && !ctrl && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
         e.preventDefault();

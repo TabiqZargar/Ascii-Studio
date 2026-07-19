@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useDispatch } from "../../context/AppContext";
 import { loadImageToCanvas, downscaleImage, downscaleForDisplay, analyzeImage } from "../../utils/image";
 import { SAMPLE_IMAGES } from "../../data/presets";
@@ -10,6 +10,12 @@ export default function Upload() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    const handler = () => inputRef.current?.click();
+    document.addEventListener("ascii-studio-upload", handler);
+    return () => document.removeEventListener("ascii-studio-upload", handler);
+  }, []);
 
   const handleFile = async (file: File) => {
     setError(null);

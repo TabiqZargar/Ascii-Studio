@@ -1,5 +1,6 @@
 import { useApp } from "../../context/AppContext";
 import { useRef, useState, useCallback, useEffect } from "react";
+import { getThemeColor } from "../../utils/colorThemes";
 
 interface Props {
   asciiOutput: string;
@@ -78,13 +79,21 @@ export default function ComparisonSlider({ asciiOutput, colorGrid }: Props) {
               const cLine = colorGrid[y] ?? [];
               return (
                 <div key={y}>
-                  {state.colorMode === "mono" ? (
-                    <span style={{ color: state.monoColor }}>{line}</span>
-                  ) : (
-                    line.split("").map((ch, x) => (
-                      <span key={x} style={{ color: cLine[x] ?? state.monoColor }}>{ch}</span>
-                    ))
-                  )}
+                  {line.split("").map((ch, x) => {
+                    let color = state.monoColor;
+                    if (state.colorMode === "original") {
+                      color = cLine[x] ?? state.monoColor;
+                    } else if (state.colorMode !== "mono") {
+                      const rgbStr = cLine[x];
+                      let lum = 128;
+                      if (rgbStr) {
+                        const match = rgbStr.match(/rgb\((\d+),(\d+),(\d+)\)/);
+                        if (match) lum = Math.round(0.299 * +match[1] + 0.587 * +match[2] + 0.114 * +match[3]);
+                      }
+                      color = getThemeColor(state.colorMode, lum, cLine[x]);
+                    }
+                    return <span key={x} style={{ color }}>{ch}</span>;
+                  })}
                 </div>
               );
             })}

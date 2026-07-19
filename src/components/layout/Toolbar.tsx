@@ -30,6 +30,7 @@ export default function Toolbar({ ascii, disabled }: Props) {
 
   const charCount = ascii.replace(/\n/g, "").length;
   const lineCount = ascii ? ascii.split("\n").length : 0;
+  const estimatedSize = new Blob([ascii]).size;
 
   return (
     <div className="flex items-center gap-2 text-[11px]">
@@ -43,14 +44,20 @@ export default function Toolbar({ ascii, disabled }: Props) {
 
       {state.asciiOutput && (
         <div className="flex items-center gap-3 text-zinc-500">
-          <span>
+          <span title="Resolution">
             {state.canvas.asciiWidth}x{Math.round(state.canvas.asciiWidth * 0.5)}
           </span>
-          <span>{lineCount} lines</span>
-          <span>{charCount.toLocaleString()} chars</span>
-          {state.conversionTime > 0 && <span>{state.conversionTime}ms</span>}
-          <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 text-zinc-500">
+          <span title="Lines">{lineCount} lines</span>
+          <span title="Characters">{charCount.toLocaleString()} chars</span>
+          {state.conversionTime > 0 && <span title="Render time">{state.conversionTime}ms</span>}
+          <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 text-zinc-500" title="Character set">
             {state.charPresetId === "custom" ? "Custom" : state.charPresetId}
+          </span>
+          <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 text-zinc-500" title="Color mode">
+            {state.colorMode}
+          </span>
+          <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 text-zinc-500" title="Estimated size">
+            ~{(estimatedSize / 1024).toFixed(1)}KB
           </span>
         </div>
       )}

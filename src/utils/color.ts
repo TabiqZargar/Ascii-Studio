@@ -1,5 +1,3 @@
-import type { GradientPreset } from "../types";
-
 export function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace("#", "");
   return [
@@ -35,6 +33,6 @@ export function gradientColorAt(colors: string[], t: number): string {
   return lerpColor(colors[idx], colors[idx + 1], frac);
 }
 
-export function brightnessToGradientColor(brightness: number, gradient: GradientPreset): string {
+export function brightnessToGradientColor(brightness: number, gradient: { colors: string[] }): string {
   return gradientColorAt(gradient.colors, brightness / 255);
 }

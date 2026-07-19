@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useApp, useDispatch } from "../../context/AppContext";
 import type { EditorCell } from "../../types";
+import { getThemeColor } from "../../utils/colorThemes";
 
 interface Props {
   asciiOutput: string;
@@ -203,14 +204,37 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      <div className="absolute right-3 top-3 z-10 flex items-center gap-2 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm">
-        <button onClick={() => dispatch({ type: "SET_ZOOM", zoom: state.zoom - 0.1 })} className="hover:text-zinc-200">-</button>
-        <span className="w-12 text-center font-mono">{Math.round(state.zoom * 100)}%</span>
-        <button onClick={() => dispatch({ type: "SET_ZOOM", zoom: state.zoom + 0.1 })} className="hover:text-zinc-200">+</button>
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm">
+        {([0.5, 1, 2, 4] as const).map((z) => (
+          <button
+            key={z}
+            onClick={() => dispatch({ type: "SET_ZOOM", zoom: z })}
+            className={`rounded px-1.5 py-0.5 transition-all ${state.zoom === z ? "bg-emerald-600/20 text-emerald-400" : "hover:text-zinc-200"}`}
+          >
+            {Math.round(z * 100)}%
+          </button>
+        ))}
+        <button
+          onClick={() => {
+            if (containerRef.current && asciiOutput) {
+              const rect = containerRef.current.getBoundingClientRect();
+              const lines = asciiOutput.split("\n").length;
+              const maxCols = Math.max(...asciiOutput.split("\n").map((l) => l.length), 1);
+              const scaleX = rect.width / (maxCols * (state.canvas.fontSize * 0.6));
+              const scaleY = rect.height / (lines * state.canvas.fontSize * state.canvas.lineHeight);
+              dispatch({ type: "SET_ZOOM", zoom: Math.max(0.5, Math.min(Math.min(scaleX, scaleY, 4), 4)) });
+            }
+          }}
+          className="rounded px-1.5 py-0.5 hover:text-zinc-200"
+          title="Fit to view"
+        >
+          Fit
+        </button>
+        <div className="mx-1 h-3 w-px bg-zinc-700" />
         <button
           onClick={() => { dispatch({ type: "SET_ZOOM", zoom: 1 }); dispatch({ type: "SET_PAN", x: 0, y: 0 }); }}
-          className="ml-1 hover:text-zinc-200"
-          title="Reset"
+          className="rounded px-1.5 py-0.5 hover:text-zinc-200"
+          title="Reset view"
         >
           Reset
         </button>
@@ -236,7 +260,20 @@ export default function AsciiCanvas({ asciiOutput, colorGrid }: Props) {
                   {line.split("").map((ch, x) => {
                     const edited = state.editorGrid[y]?.[x]?.char;
                     const display = edited ?? ch;
-                    const color = state.colorMode !== "mono" ? (cLine[x] ?? state.monoColor) : undefined;
+                    let color: string | undefined;
+                    if (state.colorMode === "mono") {
+                      color = state.monoColor;
+                    } else if (state.colorMode === "original") {
+                      color = cLine[x] ?? state.monoColor;
+                    } else {
+                      const rgbStr = cLine[x];
+                      let lum = 128;
+                      if (rgbStr) {
+                        const match = rgbStr.match(/rgb\((\d+),(\d+),(\d+)\)/);
+                        if (match) lum = Math.round(0.299 * +match[1] + 0.587 * +match[2] + 0.114 * +match[3]);
+                      }
+                      color = getThemeColor(state.colorMode, lum, cLine[x]);
+                    }
                     return (
                       <span
                         key={x}

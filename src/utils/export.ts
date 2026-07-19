@@ -1,3 +1,18 @@
+import { getThemeColor } from "./colorThemes";
+
+function resolveColor(
+  colorMode: string,
+  r: number,
+  g: number,
+  b: number,
+  monoColor: string
+): string {
+  if (colorMode === "original") return `rgb(${r},${g},${b})`;
+  if (colorMode === "mono") return monoColor;
+  const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+  return getThemeColor(colorMode as never, lum, `rgb(${r},${g},${b})`);
+}
+
 export function exportTxt(ascii: string): Blob {
   return new Blob([ascii], { type: "text/plain" });
 }
@@ -34,8 +49,13 @@ export function exportPng(
     for (let x = 0; x < line.length; x++) {
       const ch = line[x];
       if (ch === " ") continue;
-      if ((colorMode === "gradient" || colorMode === "original") && cLine[x]) {
-        ctx.fillStyle = cLine[x];
+      if (colorMode !== "mono" && cLine[x]) {
+        const match = cLine[x].match(/rgb\((\d+),(\d+),(\d+)\)/);
+        if (match) {
+          ctx.fillStyle = resolveColor(colorMode, +match[1], +match[2], +match[3], monoColor);
+        } else {
+          ctx.fillStyle = monoColor;
+        }
       } else {
         ctx.fillStyle = monoColor;
       }
@@ -56,7 +76,6 @@ export function exportSvg(
   lineHeight: number,
   letterSpacing: number,
   monoColor: string,
-  _gradientColors: string[],
   bgColor: string
 ): Blob {
   const charW = fontSize * 0.6 + letterSpacing;
@@ -76,8 +95,11 @@ export function exportSvg(
       const ch = grid[y][x];
       if (ch === " ") continue;
       let fill = monoColor;
-      if ((colorMode === "gradient" || colorMode === "original") && colorGrid[y]?.[x]) {
-        fill = colorGrid[y][x];
+      if (colorMode !== "mono" && colorGrid[y]?.[x]) {
+        const match = colorGrid[y][x].match(/rgb\((\d+),(\d+),(\d+)\)/);
+        if (match) {
+          fill = resolveColor(colorMode, +match[1], +match[2], +match[3], monoColor);
+        }
       }
       svgContent += `<text x="${x * charW}" y="${(y + 1) * charH}" fill="${fill}">${escapeXml(ch)}</text>`;
     }
@@ -104,8 +126,11 @@ export function exportHtml(
     row
       .map((ch, x) => {
         if (ch === " ") return " ";
-        if ((colorMode === "gradient" || colorMode === "original") && colorGrid[y]?.[x]) {
-          return `<span style="color:${colorGrid[y][x]}">${escapeHtml(ch)}</span>`;
+        if (colorMode !== "mono" && colorGrid[y]?.[x]) {
+          const match = colorGrid[y][x].match(/rgb\((\d+),(\d+),(\d+)\)/);
+          if (match) {
+            return `<span style="color:${resolveColor(colorMode, +match[1], +match[2], +match[3], monoColor)}">${escapeHtml(ch)}</span>`;
+          }
         }
         return `<span style="color:${monoColor}">${escapeHtml(ch)}</span>`;
       })

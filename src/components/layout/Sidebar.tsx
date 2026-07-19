@@ -2,41 +2,44 @@ import { useApp, useDispatch } from "../../context/AppContext";
 import { Collapsible } from "../common/Collapsible";
 import { Slider, Toggle, ColorPicker } from "../common/Controls";
 import { CHAR_PRESETS } from "../../data/presets";
+import { ResizablePanel } from "../common/ResizablePanel";
 
 export default function Sidebar() {
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-zinc-800/50 bg-zinc-900/30 overflow-y-auto">
-      <Collapsible title="Quick Controls" defaultOpen>
-        <QuickControls />
-      </Collapsible>
-      <Collapsible title="Characters" defaultOpen>
-        <CharactersPanel />
-      </Collapsible>
-      <Collapsible title="Image">
-        <ImagePanel />
-      </Collapsible>
-      <Collapsible title="Colors">
-        <ColorsPanel />
-      </Collapsible>
-      <Collapsible title="Canvas">
-        <CanvasPanel />
-      </Collapsible>
-      <Collapsible title="Brushes">
-        <BrushPanel />
-      </Collapsible>
-      <Collapsible title="Layers">
-        <LayersPanel />
-      </Collapsible>
-      <Collapsible title="Advanced">
-        <AdvancedPanel />
-      </Collapsible>
-      <Collapsible title="Export">
-        <ExportPanel />
-      </Collapsible>
-      <Collapsible title="Projects">
-        <ProjectPanel />
-      </Collapsible>
-    </aside>
+    <ResizablePanel defaultWidth={256} minWidth={200} maxWidth={400}>
+      <aside className="flex h-full flex-col overflow-y-auto">
+        <Collapsible title="Quick Controls" defaultOpen>
+          <QuickControls />
+        </Collapsible>
+        <Collapsible title="Characters" defaultOpen>
+          <CharactersPanel />
+        </Collapsible>
+        <Collapsible title="Image">
+          <ImagePanel />
+        </Collapsible>
+        <Collapsible title="Colors">
+          <ColorsPanel />
+        </Collapsible>
+        <Collapsible title="Canvas">
+          <CanvasPanel />
+        </Collapsible>
+        <Collapsible title="Brushes">
+          <BrushPanel />
+        </Collapsible>
+        <Collapsible title="Layers">
+          <LayersPanel />
+        </Collapsible>
+        <Collapsible title="Advanced">
+          <AdvancedPanel />
+        </Collapsible>
+        <Collapsible title="Export">
+          <ExportPanel />
+        </Collapsible>
+        <Collapsible title="Projects">
+          <ProjectPanel />
+        </Collapsible>
+      </aside>
+    </ResizablePanel>
   );
 }
 
@@ -50,7 +53,7 @@ function QuickControls() {
     { id: "terminal", icon: "\uD83D\uDCBB", name: "Terminal" },
     { id: "matrix", icon: "\uD83D\uDFE9", name: "Matrix" },
     { id: "crt", icon: "\uD83D\uDCFA", name: "CRT" },
-    { id: "pixel-art", icon: "\uD83C\uDFAE", name: "Pixel Art" },
+    { id: "pixel-art", icon: "\uD83C\uDFAE", name: "Pixel" },
     { id: "comic", icon: "\uD83C\uDFAD", name: "Comic" },
     { id: "noir", icon: "\uD83C\uDF19", name: "Noir" },
     { id: "high-contrast", icon: "\u2728", name: "Hi-Con" },
@@ -70,14 +73,29 @@ function QuickControls() {
         ))}
       </div>
       <div className="mt-3 flex gap-1">
-        <button onClick={() => dispatch({ type: "SURPRISE_ME" })} className="flex-1 rounded-lg bg-zinc-800/50 px-2 py-1.5 text-[11px] text-zinc-400 hover:bg-emerald-600/20 hover:text-emerald-400 transition-all">
-          🎲 Surprise Me
+        {state.imageData && (
+          <button
+            onClick={() => dispatch({ type: "AUTO_OPTIMIZE" })}
+            className="flex-1 rounded-lg bg-emerald-600/20 px-2 py-1.5 text-[11px] text-emerald-400 hover:bg-emerald-600/30 transition-all font-medium"
+          >
+            Auto Optimize
+          </button>
+        )}
+        <button onClick={() => dispatch({ type: "SURPRISE_ME" })} className={`${state.imageData ? "flex-1" : "flex-1"} rounded-lg bg-zinc-800/50 px-2 py-1.5 text-[11px] text-zinc-400 hover:bg-emerald-600/20 hover:text-emerald-400 transition-all`}>
+          Surprise Me
         </button>
         <button onClick={() => dispatch({ type: "RESET_ADJUSTMENTS" })} className="flex-1 rounded-lg bg-zinc-800/50 px-2 py-1.5 text-[11px] text-zinc-400 hover:bg-zinc-700/50 hover:text-zinc-200 transition-all">
-          🔄 Reset
+          Reset
         </button>
       </div>
       <Slider label="Detail Level" value={state.canvas.asciiWidth} min={30} max={250} step={5} onChange={(v) => dispatch({ type: "SET_CANVAS", canvas: { asciiWidth: v, asciiHeight: Math.round(v * 0.5) } })} />
+      {state.asciiOutput && (
+        <div className="mt-2 flex items-center justify-between rounded-lg bg-zinc-800/30 px-2 py-1.5 text-[10px] text-zinc-500">
+          <span>{state.canvas.asciiWidth} x {Math.round(state.canvas.asciiWidth * 0.5)}</span>
+          <span>{state.conversionTime}ms</span>
+          <span>{state.colorMode}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -161,34 +179,35 @@ function ImagePanel() {
 function ColorsPanel() {
   const state = useApp();
   const dispatch = useDispatch();
-  const gradients = [
-    { id: "cyberpunk", name: "Cyberpunk", colors: ["#0d0221", "#a600ff", "#ff2afc"] },
-    { id: "fire", name: "Fire", colors: ["#1a0000", "#cc3300", "#ffcc00"] },
-    { id: "ocean", name: "Ocean", colors: ["#000428", "#0077b6", "#90e0ef"] },
-    { id: "terminal", name: "Terminal", colors: ["#000000", "#006600", "#00ff00"] },
-    { id: "grayscale", name: "Grayscale", colors: ["#000000", "#666666", "#ffffff"] },
-    { id: "sunset", name: "Sunset", colors: ["#0c0718", "#d63384", "#ffc300"] },
+  const modes = [
+    { id: "mono" as const, name: "Mono", color: state.monoColor },
+    { id: "original" as const, name: "Color", color: "#ffffff" },
+    { id: "matrix" as const, name: "Matrix", color: "#00ff00" },
+    { id: "amber" as const, name: "Amber", color: "#ffaa00" },
+    { id: "cyberpunk" as const, name: "Cyber", color: "#a600ff" },
+    { id: "fire" as const, name: "Fire", color: "#ff6600" },
   ];
   return (
     <div>
-      <div className="mb-2 flex gap-1">
-        {(["mono", "original", "gradient"] as const).map((mode) => (
-          <button key={mode} onClick={() => dispatch({ type: "SET_COLOR_MODE", mode })} className={`flex-1 rounded-lg px-2 py-1.5 text-[11px] transition-all ${state.colorMode === mode ? "bg-emerald-600 text-white" : "bg-zinc-800/50 text-zinc-400 hover:bg-zinc-700/50"}`}>
-            {mode === "mono" ? "Mono" : mode === "original" ? "Color" : "Gradient"}
+      <div className="grid grid-cols-3 gap-1">
+        {modes.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => dispatch({ type: "SET_COLOR_MODE", mode: m.id })}
+            className={`flex flex-col items-center rounded-lg p-2 transition-all ${
+              state.colorMode === m.id
+                ? "ring-1 ring-emerald-500 bg-zinc-700/50 text-emerald-300"
+                : "bg-zinc-800/50 text-zinc-400 hover:bg-zinc-700/50"
+            }`}
+          >
+            <div className="mb-1 h-3 w-full rounded-full" style={{ backgroundColor: m.color, opacity: 0.8 }} />
+            <span className="text-[10px]">{m.name}</span>
           </button>
         ))}
       </div>
-      {state.colorMode === "mono" && <ColorPicker label="Color" value={state.monoColor} onChange={(c) => dispatch({ type: "SET_MONO_COLOR", color: c })} />}
-      {state.colorMode === "gradient" && (
-        <div className="grid grid-cols-2 gap-1">
-          {gradients.map((g) => (
-            <button key={g.id} onClick={() => dispatch({ type: "SET_GRADIENT", id: g.id })} className={`flex flex-col items-start rounded-lg p-1.5 text-left text-[10px] transition-all ${state.gradientId === g.id ? "ring-1 ring-emerald-500 bg-zinc-700/50" : "bg-zinc-800/50 hover:bg-zinc-700/50"}`}>
-              <span className="text-zinc-300">{g.name}</span>
-              <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded">
-                {g.colors.map((c, i) => (<div key={i} className="flex-1" style={{ backgroundColor: c }} />))}
-              </div>
-            </button>
-          ))}
+      {state.colorMode === "mono" && (
+        <div className="mt-3">
+          <ColorPicker label="Color" value={state.monoColor} onChange={(c) => dispatch({ type: "SET_MONO_COLOR", color: c })} />
         </div>
       )}
     </div>
@@ -293,17 +312,24 @@ function AdvancedPanel() {
 
 function ExportPanel() {
   const formats = [
-    { id: "txt", label: "TXT" },
-    { id: "png", label: "PNG" },
-    { id: "svg", label: "SVG" },
-    { id: "html", label: "HTML" },
-    { id: "json", label: "Project JSON" },
-    { id: "clipboard", label: "Copy ASCII" },
+    { id: "txt", label: "TXT", desc: "Plain text" },
+    { id: "png", label: "PNG", desc: "Image" },
+    { id: "html", label: "HTML", desc: "Web page" },
+    { id: "clipboard", label: "Copy", desc: "ASCII text" },
+    { id: "copy-html", label: "Copy HTML", desc: "HTML markup" },
+    { id: "json", label: "JSON", desc: "Project" },
   ];
   return (
     <div className="grid grid-cols-2 gap-1">
       {formats.map((f) => (
-        <button key={f.id} onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: f.id }))} className="rounded-lg bg-zinc-800/50 px-2 py-1.5 text-[11px] text-zinc-300 hover:bg-zinc-700/50 transition-all">{f.label}</button>
+        <button
+          key={f.id}
+          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: f.id }))}
+          className="flex flex-col items-center rounded-lg bg-zinc-800/50 px-2 py-2 text-[11px] text-zinc-300 hover:bg-zinc-700/50 transition-all"
+        >
+          <span className="font-medium">{f.label}</span>
+          <span className="text-[9px] text-zinc-600">{f.desc}</span>
+        </button>
       ))}
     </div>
   );

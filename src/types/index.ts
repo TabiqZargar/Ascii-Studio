@@ -5,13 +5,7 @@ export interface CharPreset {
   preview: string;
 }
 
-export type ColorMode = "mono" | "original" | "gradient";
-
-export interface GradientPreset {
-  id: string;
-  name: string;
-  colors: string[];
-}
+export type ColorMode = "mono" | "original" | "matrix" | "amber" | "cyberpunk" | "fire";
 
 export interface CanvasSettings {
   asciiWidth: number;
@@ -81,7 +75,6 @@ export interface StylePreset {
   icon: string;
   charPresetId: string;
   colorMode: ColorMode;
-  gradientId?: string;
   monoColor: string;
   fontSize: number;
   brightness: number;
@@ -96,7 +89,6 @@ export interface Project {
   charPresetId: string;
   customChars: string;
   colorMode: ColorMode;
-  gradientId: string;
   monoColor: string;
   canvas: CanvasSettings;
   adjustments: ImageAdjustments;
@@ -115,6 +107,17 @@ export interface ImageAnalysis {
   avgContrast: number;
 }
 
+export interface SettingsSnapshot {
+  charPresetId: string;
+  customChars: string;
+  colorMode: ColorMode;
+  monoColor: string;
+  canvas: CanvasSettings;
+  adjustments: ImageAdjustments;
+  background: BackgroundSettings;
+  transform: Transform;
+}
+
 export interface AppState {
   imageUrl: string | null;
   imageData: ImageData | null;
@@ -123,7 +126,6 @@ export interface AppState {
   charPresetId: string;
   customChars: string;
   colorMode: ColorMode;
-  gradientId: string;
   monoColor: string;
 
   canvas: CanvasSettings;
@@ -145,6 +147,8 @@ export interface AppState {
   editorGrid: EditorCell[][];
   undoStack: EditorCell[][][];
   redoStack: EditorCell[][][];
+  settingsUndoStack: SettingsSnapshot[];
+  settingsRedoStack: SettingsSnapshot[];
 
   zoom: number;
   panX: number;

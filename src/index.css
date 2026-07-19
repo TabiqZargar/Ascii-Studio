@@ -6,6 +6,8 @@ body {
   color: #e4e4e7;
   overflow: hidden;
   font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -26,6 +28,10 @@ input[type="range"] {
   border-radius: 2px;
   background: #27272a;
   outline: none;
+  transition: background 0.15s;
+}
+input[type="range"]:hover {
+  background: #3f3f46;
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -36,6 +42,11 @@ input[type="range"]::-webkit-slider-thumb {
   cursor: pointer;
   border: 2px solid #0c0c0f;
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 1px 6px rgba(16,185,129,0.3);
 }
 input[type="range"]::-moz-range-thumb {
   width: 14px;
@@ -44,4 +55,17 @@ input[type="range"]::-moz-range-thumb {
   background: #10b981;
   cursor: pointer;
   border: 2px solid #0c0c0f;
+}
+
+button {
+  transition: background-color 0.15s, color 0.15s, opacity 0.15s, transform 0.1s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
 }
