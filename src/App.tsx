@@ -1,6 +1,7 @@
 import { useReducer, useEffect, useCallback, useRef, useState } from "react";
 import { AppContext, DispatchContext } from "./context/AppContext";
 import { appReducer, initialState } from "./context/appReducer";
+
 import { useAsciiWorker } from "./hooks/useAsciiWorker";
 import type { ConvertParams } from "./hooks/useAsciiWorker";
 import { useDebounce } from "./hooks/useDebounce";
@@ -75,6 +76,7 @@ export default function App() {
   }, [state.charPresetId, state.customChars, state.canvas.asciiWidth, state.adjustments]);
 
   const processQueue = useCallback(() => {
+    console.log("[PIPELINE] Stage 8: processQueue called");
     if (processingRef.current || queueRef.current.length === 0) return;
     const idx = queueRef.current.shift();
     if (idx === undefined) return;
@@ -90,18 +92,7 @@ export default function App() {
     const params = getConvertParams();
     const gen = generationRef.current;
 
-    // --- DIAGNOSTIC Stage 2: Checksum frame data before worker ---
-    let chk2 = 0;
-    for (let i = 0; i < frame.imageData.data.length; i += 17) {
-      chk2 = ((chk2 << 5) - chk2 + frame.imageData.data[i]) | 0;
-    }
-    const bufAddr2 = (frame.imageData.data as unknown as { buffer: ArrayBuffer }).buffer.byteLength;
-    console.log(`[App Diag] Frame ${idx} BEFORE worker: checksum=0x${(chk2 >>> 0).toString(16).padStart(8,'0')} bufLen=${frame.imageData.data.length} bufAddr=${bufAddr2}`);
-
-    console.log(`[App] Queuing frame ${idx}, queue remaining: ${queueRef.current.length}, gen: ${gen}`);
-
     convertFrame(frame, params, (output, colorGrid) => {
-      console.log(`[App] Frame ${idx} processed, output length: ${output.length}, gen check: ${generationRef.current === gen ? "OK" : "STALE (skipped)"}`);
       if (generationRef.current !== gen) { processingRef.current = false; return; }
       dispatch({ type: "CACHE_FRAME", index: idx, frame: { output, colorGrid } });
       processingRef.current = false;
@@ -141,7 +132,6 @@ export default function App() {
     processingRef.current = false;
     const initialCount = Math.min(INITIAL_FAST_COUNT, state.animation.rawFrames.length);
     queueRef.current = Array.from({ length: initialCount }, (_, i) => i);
-    console.log(`[App] INIT: queuing frames [${queueRef.current.join(", ")}] of ${state.animation.rawFrames.length} total`);
     processQueueRef.current();
   }, [state.animation.rawFrames, state.animation.cachedCount, processQueue]);
 
@@ -157,7 +147,6 @@ export default function App() {
       }
     }
     if (needed.length > 0) {
-      console.log(`[App] PREBUFFER: queuing frames [${needed.join(", ")}] from current ${cur}`);
       queueRef.current.push(...needed);
       processQueueRef.current();
     }
@@ -171,7 +160,6 @@ export default function App() {
       generationRef.current++;
       queueRef.current = [];
       processingRef.current = false;
-      console.log(`[App] SETTINGS CHANGED: re-caching all frames`);
       dispatch({ type: "SET_PENDING", indices: [] });
       dispatch({ type: "INIT_ANIMATION", rawFrames: state.animation.rawFrames, timings: state.animation.frameTimings, sourceFps: state.animation.sourceFps });
       const needed = [state.animation.currentFrame];
@@ -185,7 +173,7 @@ export default function App() {
 
   useEffect(() => {
     if (state.animation.playing && state.animation.rawFrames.length > 0) {
-      console.log(`[App] PLAYBACK STARTED at ${state.animation.fps}fps`);
+      console.log("[PIPELINE] Stage 13: playback timer started");
       const interval = 1000 / state.animation.fps;
       animTimerRef.current = window.setInterval(() => {
         const total = stateRef.current.animation.rawFrames.length;
@@ -207,10 +195,7 @@ export default function App() {
               if (stateRef.current.animation.frameCache[i]) { found = i; break; }
             }
             if (found >= 0) {
-              console.log(`[App] TICK: frame ${nextIdx} not cached, skipping to ${found}`);
               dispatch({ type: "SET_CURRENT_FRAME", index: found });
-            } else {
-              console.log(`[App] TICK: no cached frames ahead of ${cur}, waiting`);
             }
           }
         }

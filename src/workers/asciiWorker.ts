@@ -89,8 +89,6 @@ self.onmessage = (e: MessageEvent) => {
       adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean };
     };
     
-    console.log(`[Worker] Received batch of ${frames.length} frames`);
-    
     const results: { output: string; colorGrid: string[][] }[] = [];
     for (let i = 0; i < frames.length; i++) {
       // ASSERTION: Frame data
@@ -102,7 +100,6 @@ self.onmessage = (e: MessageEvent) => {
       results.push(convertFrame(frames[i], charset, width, adjustments));
       self.postMessage({ type: "progress", current: i + 1, total: frames.length });
     }
-    console.log(`[Worker] Batch processing complete, produced ${results.length} outputs`);
     self.postMessage({ type: "batch-done", results });
     return;
   }
@@ -114,14 +111,7 @@ self.onmessage = (e: MessageEvent) => {
     adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean };
   };
 
+  console.log("[PIPELINE] Stage 10: worker processing frame");
   const result = convertFrame(imageData, charset, width, adjustments);
-  // --- DIAGNOSTIC Stage 3: Checksum worker output ---
-  let chk3 = 0;
-  const out = result.output;
-  for (let i = 0; i < out.length; i += 7) {
-    chk3 = ((chk3 << 5) - chk3 + out.charCodeAt(i)) | 0;
-  }
-  console.log(`[Worker Diag] output checksum=0x${(chk3 >>> 0).toString(16).padStart(8,'0')} outputLen=${out.length}`);
   self.postMessage(result);
-  console.log(`[Worker] Processed frame`);
 };

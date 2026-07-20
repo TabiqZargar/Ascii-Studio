@@ -140,16 +140,7 @@ const AsciiCanvas = forwardRef<HTMLDivElement, Props>(function AsciiCanvas({ asc
   const lines = asciiOutput ? asciiOutput.split("\n") : [];
   const { fontSize, lineHeight, letterSpacing, fontFamily } = state.canvas;
 
-  // --- DIAGNOSTIC Stage 6: Checksum asciiOutput on render ---
-  useEffect(() => {
-    if (asciiOutput) {
-      let chk6 = 0;
-      for (let i = 0; i < asciiOutput.length; i += 7) {
-        chk6 = ((chk6 << 5) - chk6 + asciiOutput.charCodeAt(i)) | 0;
-      }
-      console.log(`[AsciiCanvas Diag] Stage 6 render checksum=0x${(chk6 >>> 0).toString(16).padStart(8,'0')} outputLen=${asciiOutput.length} frame=${state.animation.currentFrame}`);
-    }
-  });
+  console.log("[PIPELINE] Stage 14: AsciiCanvas render, asciiOutput length:", asciiOutput.length);
 
   const handleCharMouseDown = useCallback((row: number, col: number, e: React.MouseEvent) => {
     if (state.activeLayerId !== "ascii-layer" || asciiLayer?.locked) return;

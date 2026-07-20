@@ -1,6 +1,6 @@
 import { useRef, useCallback } from "react";
-import { useDispatch } from "../../context/AppContext";
-import { loadImageToCanvas, downscaleImage, downscaleForDisplay, analyzeImage } from "../../utils/image";
+import { useApp, useDispatch } from "../../context/AppContext";
+import { processUploadedFile } from "../../utils/processFile";
 
 interface Props {
   onEnterWorkspace: () => void;
@@ -9,24 +9,15 @@ interface Props {
 const ACCEPTED = ".jpg,.jpeg,.png,.webp,.gif";
 
 export default function LandingPage({ onEnterWorkspace }: Props) {
+  const state = useApp();
   const dispatch = useDispatch();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const processFile = useCallback(async (file: File) => {
-    dispatch({ type: "SET_LOADING", loading: true });
-    try {
-      const url = URL.createObjectURL(file);
-      const canvas = document.createElement("canvas");
-      const imageData = await loadImageToCanvas(url, canvas);
-      const scaled = downscaleImage(imageData, 2048);
-      const small = downscaleForDisplay(scaled, 400);
-      const analysis = analyzeImage(scaled);
-      dispatch({ type: "SET_IMAGE", url, imageData: scaled, smallImageData: small, analysis });
-      onEnterWorkspace();
-    } catch {
-      dispatch({ type: "SET_LOADING", loading: false });
-    }
-  }, [dispatch, onEnterWorkspace]);
+    await processUploadedFile(file, dispatch, state.canvas.asciiWidth, {
+      onSuccess: onEnterWorkspace,
+    });
+  }, [dispatch, state.canvas.asciiWidth, onEnterWorkspace]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
