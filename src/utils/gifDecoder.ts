@@ -7,6 +7,11 @@
  * 3. Snapshot: downscale immediately during decode (10x memory reduction)
  * 4. Downscale: single reused canvas pair across all frames
  * 5. Composite: transparency fast-path branches
+ *
+ * Disposal methods per GIF89a spec:
+ *   0 / 1 — Do not dispose (leave canvas as-is)
+ *   2 — Restore to background color
+ *   3 — Restore to previous (canvas state before this frame was drawn)
  */
 
 import { mark, measure } from "./gifProfile";
@@ -65,7 +70,6 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
   const gctSize = hasGCT ? 2 ** ((packed & 0x07) + 1) : 0;
 
   // Parse GCT into flat Uint8Array for fast palette lookup
-  // Layout: [r0,g0,b0, r1,g1,b1, ...]
   const gctFlat = new Uint8Array(gctSize * 3);
   if (hasGCT) {
     for (let i = 0; i < gctSize; i++) {
@@ -84,7 +88,6 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
   const outW = needsDownscale ? targetWidth : width;
   const outH = needsDownscale ? Math.round(height * scaleRatio) : height;
 
-  // Single canvas pair for downscaling (reused across frames)
   let downscaleSrcCanvas: HTMLCanvasElement | undefined;
   let downscaleSrcCtx: CanvasRenderingContext2D | undefined;
   let downscaleDstCanvas: HTMLCanvasElement | undefined;
@@ -109,23 +112,29 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
   const compositeBuffer = ctx.createImageData(width, height);
   const compositeData = compositeBuffer.data;
 
-  // Initialize with background color
+  // Background color for disposal method 2
+  let bgR = 0, bgG = 0, bgB = 0;
   if (hasGCT && bgColorIndex * 3 + 2 < gctFlat.length) {
-    const r = gctFlat[bgColorIndex * 3];
-    const g = gctFlat[bgColorIndex * 3 + 1];
-    const b = gctFlat[bgColorIndex * 3 + 2];
-    for (let i = 0; i < compositeData.length; i += 4) {
-      compositeData[i] = r;
-      compositeData[i + 1] = g;
-      compositeData[i + 2] = b;
-      compositeData[i + 3] = 255;
-    }
+    bgR = gctFlat[bgColorIndex * 3];
+    bgG = gctFlat[bgColorIndex * 3 + 1];
+    bgB = gctFlat[bgColorIndex * 3 + 2];
+  }
+  for (let i = 0; i < compositeData.length; i += 4) {
+    compositeData[i] = bgR;
+    compositeData[i + 1] = bgG;
+    compositeData[i + 2] = bgB;
+    compositeData[i + 3] = 255;
   }
 
   const frames: GifFrame[] = [];
   let transparentIndex = -1;
   let delayMs = 100;
   let disposalMethod = 0;
+
+  // Track previous frame's disposal info (applied BEFORE current frame is drawn)
+  let prevDisposal = 0;
+  let prevFrameX = 0, prevFrameY = 0, prevFrameW = 0, prevFrameH = 0;
+  let savedComposite: Uint8ClampedArray | null = null;
 
   let totalLzwTime = 0;
   let totalCompositeTime = 0;
@@ -150,7 +159,6 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       const hasLCT = (framePacked & 0x80) !== 0;
       const lctSize = hasLCT ? 2 ** ((framePacked & 0x07) + 1) : 0;
 
-      // Parse LCT into flat array
       let lctFlat: Uint8Array | null = null;
       if (hasLCT) {
         lctFlat = new Uint8Array(lctSize * 3);
@@ -164,18 +172,27 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
 
       const palette = lctFlat ?? gctFlat;
 
-      // Apply disposal method to current composite
-      if (disposalMethod === 2) {
-        for (let y = frameY; y < frameY + frameH && y < height; y++) {
+      // --- Apply PREVIOUS frame's disposal method ---
+      if (prevDisposal === 2) {
+        // Restore to background color
+        for (let y = prevFrameY; y < prevFrameY + prevFrameH && y < height; y++) {
           const rowOff = y * width;
-          for (let x = frameX; x < frameX + frameW && x < width; x++) {
+          for (let x = prevFrameX; x < prevFrameX + prevFrameW && x < width; x++) {
             const idx = (rowOff + x) << 2;
-            compositeData[idx] = 0;
-            compositeData[idx + 1] = 0;
-            compositeData[idx + 2] = 0;
-            compositeData[idx + 3] = 0;
+            compositeData[idx] = bgR;
+            compositeData[idx + 1] = bgG;
+            compositeData[idx + 2] = bgB;
+            compositeData[idx + 3] = 255;
           }
         }
+      } else if (prevDisposal === 3 && savedComposite) {
+        // Restore to previous canvas state
+        compositeData.set(savedComposite);
+      }
+
+      // Save canvas state if CURRENT frame requests disposal=3
+      if (disposalMethod === 3) {
+        savedComposite = new Uint8ClampedArray(compositeData);
       }
 
       // LZW Minimum Code Size
@@ -211,11 +228,8 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       const framePixelCount = frameW * frameH;
       let pixelIdx = 0;
 
-      // DEBUG: Log frame properties
-      console.log(`[GIF Decoder] Processing frame: ${frames.length}, size: ${frameW}x${frameH}, delay: ${delayMs}, disposal: ${disposalMethod}`);
+      console.log(`[GIF Decoder] Frame ${frames.length}: ${frameW}x${frameH} at (${frameX},${frameY}), delay=${delayMs}ms, disposal=${disposalMethod}, prevDisposal=${prevDisposal}`);
 
-
-      // Fast path: no transparency, palette fits in 256 entries
       if (transparentIndex === -1) {
         for (let y = frameY; y < frameY + frameH && y < height; y++) {
           const rowOff = y * width;
@@ -254,9 +268,7 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
 
       let frameData: ImageData;
       if (needsDownscale && downscaleSrcCtx && downscaleDstCtx && downscaleDstCanvas && downscaleSrcCanvas) {
-        // Put full-res composite into source canvas
         downscaleSrcCtx.putImageData(compositeBuffer, 0, 0);
-        // Draw downscaled into dest canvas
         downscaleDstCtx.clearRect(0, 0, outW, outH);
         downscaleDstCtx.drawImage(downscaleSrcCanvas, 0, 0, outW, outH);
         frameData = downscaleDstCtx.getImageData(0, 0, outW, outH);
@@ -270,6 +282,13 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       totalSnapshotTime += measure("snapshot");
 
       frames.push({ imageData: frameData, delayMs, disposalMethod });
+
+      // Save current frame's info for the NEXT frame's disposal
+      prevDisposal = disposalMethod;
+      prevFrameX = frameX;
+      prevFrameY = frameY;
+      prevFrameW = frameW;
+      prevFrameH = frameH;
 
     } else if (blockType === 0x21) {
       const extLabel = readByte();
@@ -308,7 +327,6 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
 
   if (frames.length === 0) throw new Error("No frames found in GIF");
 
-  // ASSERTION: Animation
   console.log(`[GIF Decoder] Decoded ${frames.length} frames.`);
   if (frames.length < 2) {
     throw new Error(`Expected animated GIF, but only found ${frames.length} frame(s)`);
