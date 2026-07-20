@@ -1,26 +1,38 @@
 import { useRef, useCallback, useEffect } from "react";
 
+export interface DebouncedFn<T extends (...args: unknown[]) => void> {
+  (...args: Parameters<T>): void;
+  cancel: () => void;
+}
+
 export function useDebounce<T extends (...args: unknown[]) => void>(
   fn: T,
   ms: number
-): T {
+): DebouncedFn<T> {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fnRef = useRef(fn);
   fnRef.current = fn;
 
+  const cancel = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
   const debounced = useCallback(
     (...args: unknown[]) => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      cancel();
       timerRef.current = setTimeout(() => fnRef.current(...args), ms);
     },
-    [ms]
-  ) as T;
+    [ms, cancel]
+  ) as DebouncedFn<T>;
+
+  debounced.cancel = cancel;
 
   useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+    return cancel;
+  }, [cancel]);
 
   return debounced;
 }

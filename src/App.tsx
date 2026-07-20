@@ -40,6 +40,7 @@ export default function App() {
   const generationRef = useRef(0);
   const stateRef = useRef(state);
   stateRef.current = state;
+  const processQueueRef = useRef<() => void>(() => {});
 
   const [screen, setScreen] = useState<"landing" | "workspace">(
     state.imageUrl ? "workspace" : "landing"
@@ -80,7 +81,7 @@ export default function App() {
 
     const anim = stateRef.current.animation;
     if (idx < 0 || idx >= anim.rawFrames.length) return;
-    if (anim.frameCache[idx] !== undefined) { processQueue(); return; }
+    if (anim.frameCache[idx] !== undefined) { processQueueRef.current(); return; }
 
     processingRef.current = true;
     const rawFrame = anim.rawFrames[idx];
@@ -89,14 +90,18 @@ export default function App() {
     const params = getConvertParams();
     const gen = generationRef.current;
 
+    console.log(`[App] Queuing frame ${idx}, queue remaining: ${queueRef.current.length}, gen: ${gen}`);
+
     convertFrame(frame, params, (output, colorGrid) => {
-      console.log(`[App] Frame ${idx} processed`);
+      console.log(`[App] Frame ${idx} processed, output length: ${output.length}, gen check: ${generationRef.current === gen ? "OK" : "STALE (skipped)"}`);
       if (generationRef.current !== gen) { processingRef.current = false; return; }
       dispatch({ type: "CACHE_FRAME", index: idx, frame: { output, colorGrid } });
       processingRef.current = false;
-      processQueue();
+      processQueueRef.current();
     });
   }, [convertFrame, getConvertParams]);
+
+  processQueueRef.current = processQueue;
 
   const runConversion = useCallback(() => {
     if (!state.imageData) return;
@@ -116,13 +121,20 @@ export default function App() {
   }, [state.imageData, state.charPresetId, state.customChars, state.canvas.asciiWidth, state.canvas.asciiHeight, state.adjustments, state.transform, debouncedConvert, state.animation.rawFrames.length]);
 
   useEffect(() => {
+    if (state.animation.rawFrames.length > 0) {
+      debouncedConvert.cancel();
+    }
+  }, [state.animation.rawFrames.length, debouncedConvert]);
+
+  useEffect(() => {
     if (state.animation.rawFrames.length === 0 || state.animation.cachedCount > 0) return;
     generationRef.current++;
     queueRef.current = [];
     processingRef.current = false;
     const initialCount = Math.min(INITIAL_FAST_COUNT, state.animation.rawFrames.length);
     queueRef.current = Array.from({ length: initialCount }, (_, i) => i);
-    processQueue();
+    console.log(`[App] INIT: queuing frames [${queueRef.current.join(", ")}] of ${state.animation.rawFrames.length} total`);
+    processQueueRef.current();
   }, [state.animation.rawFrames, state.animation.cachedCount, processQueue]);
 
   useEffect(() => {
@@ -137,8 +149,9 @@ export default function App() {
       }
     }
     if (needed.length > 0) {
+      console.log(`[App] PREBUFFER: queuing frames [${needed.join(", ")}] from current ${cur}`);
       queueRef.current.push(...needed);
-      processQueue();
+      processQueueRef.current();
     }
   }, [state.animation.currentFrame, state.animation.playing, state.animation.rawFrames.length, state.animation.frameCache, processQueue]);
 
@@ -150,6 +163,7 @@ export default function App() {
       generationRef.current++;
       queueRef.current = [];
       processingRef.current = false;
+      console.log(`[App] SETTINGS CHANGED: re-caching all frames`);
       dispatch({ type: "SET_PENDING", indices: [] });
       dispatch({ type: "INIT_ANIMATION", rawFrames: state.animation.rawFrames, timings: state.animation.frameTimings, sourceFps: state.animation.sourceFps });
       const needed = [state.animation.currentFrame];
@@ -157,12 +171,13 @@ export default function App() {
         needed.push((state.animation.currentFrame + i) % state.animation.rawFrames.length);
       }
       queueRef.current = [...new Set(needed)];
-      processQueue();
+      processQueueRef.current();
     }
   }, [state.charPresetId, state.canvas.asciiWidth, state.adjustments, state.animation.rawFrames, state.animation.frameTimings, state.animation.sourceFps, state.animation.currentFrame, processQueue, dispatch]);
 
   useEffect(() => {
     if (state.animation.playing && state.animation.rawFrames.length > 0) {
+      console.log(`[App] PLAYBACK STARTED at ${state.animation.fps}fps`);
       const interval = 1000 / state.animation.fps;
       animTimerRef.current = window.setInterval(() => {
         const total = stateRef.current.animation.rawFrames.length;
@@ -184,7 +199,10 @@ export default function App() {
               if (stateRef.current.animation.frameCache[i]) { found = i; break; }
             }
             if (found >= 0) {
+              console.log(`[App] TICK: frame ${nextIdx} not cached, skipping to ${found}`);
               dispatch({ type: "SET_CURRENT_FRAME", index: found });
+            } else {
+              console.log(`[App] TICK: no cached frames ahead of ${cur}, waiting`);
             }
           }
         }

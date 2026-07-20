@@ -8,17 +8,50 @@ export interface ConvertParams {
   adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean };
 }
 
+type PendingRequest =
+  | { type: "single"; onResult: (output: string, colorGrid: string[][]) => void }
+  | { type: "frame"; onResult: (output: string, colorGrid: string[][]) => void }
+  | {
+      type: "batch";
+      onProgress: (current: number, total: number) => void;
+      onDone: (results: { output: string; colorGrid: string[][] }[]) => void;
+    }
+  | null;
+
 export function useAsciiWorker() {
   const workerRef = useRef<Worker | null>(null);
+  const pendingRef = useRef<PendingRequest>(null);
 
   useEffect(() => {
-    workerRef.current = new Worker(
+    const worker = new Worker(
       new URL("../workers/asciiWorker.ts", import.meta.url),
       { type: "module" }
     );
+    workerRef.current = worker;
+
+    worker.onmessage = (e: MessageEvent) => {
+      const pending = pendingRef.current;
+      if (!pending) return;
+
+      if (pending.type === "single" || pending.type === "frame") {
+        if (e.data.output !== undefined) {
+          pending.onResult(e.data.output, e.data.colorGrid);
+          pendingRef.current = null;
+        }
+      } else if (pending.type === "batch") {
+        if (e.data.type === "progress") {
+          pending.onProgress(e.data.current, e.data.total);
+        } else if (e.data.type === "batch-done") {
+          pending.onDone(e.data.results);
+          pendingRef.current = null;
+        }
+      }
+    };
+
     return () => {
-      workerRef.current?.terminate();
+      worker.terminate();
       workerRef.current = null;
+      pendingRef.current = null;
     };
   }, []);
 
@@ -28,19 +61,12 @@ export function useAsciiWorker() {
       onResult: (output: string, colorGrid: string[][]) => void
     ) => {
       if (!state.imageData || !workerRef.current) return;
+      if (state.animation.rawFrames.length > 0) return;
 
       const chars = getActiveCharString(state);
-      const worker = workerRef.current;
+      pendingRef.current = { type: "single", onResult };
 
-      const handler = (e: MessageEvent) => {
-        if (e.data.output !== undefined) {
-          onResult(e.data.output, e.data.colorGrid);
-          worker.removeEventListener("message", handler);
-        }
-      };
-      worker.addEventListener("message", handler);
-
-      worker.postMessage({
+      workerRef.current.postMessage({
         imageData: state.imageData,
         charset: chars,
         width: state.canvas.asciiWidth,
@@ -62,17 +88,9 @@ export function useAsciiWorker() {
       onResult: (output: string, colorGrid: string[][]) => void
     ) => {
       if (!workerRef.current) return;
-      const worker = workerRef.current;
+      pendingRef.current = { type: "frame", onResult };
 
-      const handler = (e: MessageEvent) => {
-        if (e.data.output !== undefined) {
-          onResult(e.data.output, e.data.colorGrid);
-          worker.removeEventListener("message", handler);
-        }
-      };
-      worker.addEventListener("message", handler);
-
-      worker.postMessage({
+      workerRef.current.postMessage({
         imageData,
         charset: params.charset,
         width: params.asciiWidth,
@@ -93,19 +111,9 @@ export function useAsciiWorker() {
     ) => {
       if (!workerRef.current || frames.length === 0) return;
 
-      const worker = workerRef.current;
+      pendingRef.current = { type: "batch", onProgress, onDone };
 
-      const handler = (e: MessageEvent) => {
-        if (e.data.type === "progress") {
-          onProgress(e.data.current, e.data.total);
-        } else if (e.data.type === "batch-done") {
-          onDone(e.data.results);
-          worker.removeEventListener("message", handler);
-        }
-      };
-      worker.addEventListener("message", handler);
-
-      worker.postMessage({
+      workerRef.current.postMessage({
         type: "batch",
         frames,
         charset,
