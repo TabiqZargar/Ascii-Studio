@@ -114,6 +114,14 @@ self.onmessage = (e: MessageEvent) => {
     adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean };
   };
 
-  self.postMessage(convertFrame(imageData, charset, width, adjustments));
+  const result = convertFrame(imageData, charset, width, adjustments);
+  // --- DIAGNOSTIC Stage 3: Checksum worker output ---
+  let chk3 = 0;
+  const out = result.output;
+  for (let i = 0; i < out.length; i += 7) {
+    chk3 = ((chk3 << 5) - chk3 + out.charCodeAt(i)) | 0;
+  }
+  console.log(`[Worker Diag] output checksum=0x${(chk3 >>> 0).toString(16).padStart(8,'0')} outputLen=${out.length}`);
+  self.postMessage(result);
   console.log(`[Worker] Processed frame`);
 };

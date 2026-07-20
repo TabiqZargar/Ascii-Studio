@@ -90,6 +90,14 @@ export default function App() {
     const params = getConvertParams();
     const gen = generationRef.current;
 
+    // --- DIAGNOSTIC Stage 2: Checksum frame data before worker ---
+    let chk2 = 0;
+    for (let i = 0; i < frame.imageData.data.length; i += 17) {
+      chk2 = ((chk2 << 5) - chk2 + frame.imageData.data[i]) | 0;
+    }
+    const bufAddr2 = (frame.imageData.data as unknown as { buffer: ArrayBuffer }).buffer.byteLength;
+    console.log(`[App Diag] Frame ${idx} BEFORE worker: checksum=0x${(chk2 >>> 0).toString(16).padStart(8,'0')} bufLen=${frame.imageData.data.length} bufAddr=${bufAddr2}`);
+
     console.log(`[App] Queuing frame ${idx}, queue remaining: ${queueRef.current.length}, gen: ${gen}`);
 
     convertFrame(frame, params, (output, colorGrid) => {

@@ -51,13 +51,22 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
   // --- Stage 1: Header + GCT ---
   mark("gifParse");
 
-  const signature = String.fromCharCode(view.getUint8(pos), view.getUint8(pos + 1), view.getUint8(pos + 2));
+  const signature = String.fromCharCode(
+    view.getUint8(pos),
+    view.getUint8(pos + 1),
+    view.getUint8(pos + 2),
+  );
   pos += 3;
   if (signature !== "GIF") throw new Error("Not a GIF file");
 
-  const version = String.fromCharCode(view.getUint8(pos), view.getUint8(pos + 1), view.getUint8(pos + 2));
+  const version = String.fromCharCode(
+    view.getUint8(pos),
+    view.getUint8(pos + 1),
+    view.getUint8(pos + 2),
+  );
   pos += 3;
-  if (version !== "87a" && version !== "89a") throw new Error("Unsupported GIF version");
+  if (version !== "87a" && version !== "89a")
+    throw new Error("Unsupported GIF version");
 
   const width = readUint16();
   const height = readUint16();
@@ -113,7 +122,9 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
   const compositeData = compositeBuffer.data;
 
   // Background color for disposal method 2
-  let bgR = 0, bgG = 0, bgB = 0;
+  let bgR = 0,
+    bgG = 0,
+    bgB = 0;
   if (hasGCT && bgColorIndex * 3 + 2 < gctFlat.length) {
     bgR = gctFlat[bgColorIndex * 3];
     bgG = gctFlat[bgColorIndex * 3 + 1];
@@ -133,7 +144,10 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
 
   // Track previous frame's disposal info (applied BEFORE current frame is drawn)
   let prevDisposal = 0;
-  let prevFrameX = 0, prevFrameY = 0, prevFrameW = 0, prevFrameH = 0;
+  let prevFrameX = 0,
+    prevFrameY = 0,
+    prevFrameW = 0,
+    prevFrameH = 0;
   let savedComposite: Uint8ClampedArray | null = null;
 
   let totalLzwTime = 0;
@@ -148,7 +162,7 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
   while (pos < view.byteLength) {
     const blockType = readByte();
 
-    if (blockType === 0x2C) {
+    if (blockType === 0x2c) {
       // Image Descriptor
       const frameX = readUint16();
       const frameY = readUint16();
@@ -175,9 +189,17 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       // --- Apply PREVIOUS frame's disposal method ---
       if (prevDisposal === 2) {
         // Restore to background color
-        for (let y = prevFrameY; y < prevFrameY + prevFrameH && y < height; y++) {
+        for (
+          let y = prevFrameY;
+          y < prevFrameY + prevFrameH && y < height;
+          y++
+        ) {
           const rowOff = y * width;
-          for (let x = prevFrameX; x < prevFrameX + prevFrameW && x < width; x++) {
+          for (
+            let x = prevFrameX;
+            x < prevFrameX + prevFrameW && x < width;
+            x++
+          ) {
             const idx = (rowOff + x) << 2;
             compositeData[idx] = bgR;
             compositeData[idx + 1] = bgG;
@@ -215,7 +237,9 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
 
       // ASSERTION: LZW Output
       if (pixels.length !== frameW * frameH) {
-        throw new Error(`LZW Decode failed: expected ${frameW * frameH} pixels, got ${pixels.length}`);
+        throw new Error(
+          `LZW Decode failed: expected ${frameW * frameH} pixels, got ${pixels.length}`,
+        );
       }
 
       // Grow buffer if needed
@@ -228,7 +252,9 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       const framePixelCount = frameW * frameH;
       let pixelIdx = 0;
 
-      console.log(`[GIF Decoder] Frame ${frames.length}: ${frameW}x${frameH} at (${frameX},${frameY}), delay=${delayMs}ms, disposal=${disposalMethod}, prevDisposal=${prevDisposal}`);
+      console.log(
+        `[GIF Decoder] Frame ${frames.length}: ${frameW}x${frameH} at (${frameX},${frameY}), delay=${delayMs}ms, disposal=${disposalMethod}, prevDisposal=${prevDisposal}`,
+      );
 
       if (transparentIndex === -1) {
         for (let y = frameY; y < frameY + frameH && y < height; y++) {
@@ -267,7 +293,13 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       mark("snapshot");
 
       let frameData: ImageData;
-      if (needsDownscale && downscaleSrcCtx && downscaleDstCtx && downscaleDstCanvas && downscaleSrcCanvas) {
+      if (
+        needsDownscale &&
+        downscaleSrcCtx &&
+        downscaleDstCtx &&
+        downscaleDstCanvas &&
+        downscaleSrcCanvas
+      ) {
         downscaleSrcCtx.putImageData(compositeBuffer, 0, 0);
         downscaleDstCtx.clearRect(0, 0, outW, outH);
         downscaleDstCtx.drawImage(downscaleSrcCanvas, 0, 0, outW, outH);
@@ -276,10 +308,23 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
         frameData = new ImageData(
           new Uint8ClampedArray(compositeData),
           width,
-          height
+          height,
         );
       }
       totalSnapshotTime += measure("snapshot");
+
+      // --- DIAGNOSTIC: Checksum frame imageData ---
+      let checksum = 0;
+      for (let i = 0; i < frameData.data.length; i += 17) {
+        checksum = ((checksum << 5) - checksum + frameData.data[i]) | 0;
+      }
+      const bufAddr = (frameData.data as unknown as { buffer: ArrayBuffer })
+        .buffer.byteLength;
+      console.log(
+        `[GIF Diag] Frame ${frameIndex} checksum=0x${(checksum >>> 0).toString(16).padStart(8, "0")} ` +
+          `bufLen=${frameData.data.length} bufAddr=${bufAddr} ` +
+          `w=${frameData.width} h=${frameData.height}`,
+      );
 
       frames.push({ imageData: frameData, delayMs, disposalMethod });
 
@@ -289,11 +334,10 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       prevFrameY = frameY;
       prevFrameW = frameW;
       prevFrameH = frameH;
-
     } else if (blockType === 0x21) {
       const extLabel = readByte();
 
-      if (extLabel === 0xF9) {
+      if (extLabel === 0xf9) {
         pos++; // block size
         const gcePacked = readByte();
         disposalMethod = (gcePacked >> 2) & 0x07;
@@ -303,20 +347,29 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
         transparentIndex = hasTransparency ? readByte() : -1;
         if (!hasTransparency) pos++;
         pos++; // block terminator
-      } else if (extLabel === 0xFF) {
+      } else if (extLabel === 0xff) {
         pos += 12; // block size + app identifier
         let subLen = readByte();
-        while (subLen > 0) { pos += subLen; subLen = readByte(); }
-      } else if (extLabel === 0xFE) {
+        while (subLen > 0) {
+          pos += subLen;
+          subLen = readByte();
+        }
+      } else if (extLabel === 0xfe) {
         let subLen = readByte();
-        while (subLen > 0) { pos += subLen; subLen = readByte(); }
+        while (subLen > 0) {
+          pos += subLen;
+          subLen = readByte();
+        }
       } else {
         const blockSize = readByte();
         pos += blockSize;
         let subLen = readByte();
-        while (subLen > 0) { pos += subLen; subLen = readByte(); }
+        while (subLen > 0) {
+          pos += subLen;
+          subLen = readByte();
+        }
       }
-    } else if (blockType === 0x3B) {
+    } else if (blockType === 0x3b) {
       break;
     } else if (blockType === 0x00) {
       // padding
@@ -329,7 +382,9 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
 
   console.log(`[GIF Decoder] Decoded ${frames.length} frames.`);
   if (frames.length < 2) {
-    throw new Error(`Expected animated GIF, but only found ${frames.length} frame(s)`);
+    throw new Error(
+      `Expected animated GIF, but only found ${frames.length} frame(s)`,
+    );
   }
 
   return {
@@ -357,7 +412,7 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
 function lzwDecodeOptimized(
   minCodeSize: number,
   data: number[],
-  outputBuffer: Uint8Array
+  outputBuffer: Uint8Array,
 ): Uint8Array {
   const clearCode = 1 << minCodeSize;
   const eoiCode = clearCode + 1;
@@ -459,7 +514,7 @@ function lzwDecodeOptimized(
       dictSuffix[nextCode] = firstChar;
       dictLens[nextCode] = dictLens[prev] + 1;
       nextCode++;
-      if (nextCode > (1 << codeSize) && codeSize < 12) {
+      if (nextCode > 1 << codeSize && codeSize < 12) {
         codeSize++;
       }
     }

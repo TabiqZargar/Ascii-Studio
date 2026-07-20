@@ -393,6 +393,14 @@ export function appReducer(state: AppState, action: Action): AppState {
       };
     }
     case "CACHE_FRAME": {
+      // --- DIAGNOSTIC Stage 4: Checksum frame.output ---
+      let chk4 = 0;
+      const out4 = action.frame.output;
+      for (let i = 0; i < out4.length; i += 7) {
+        chk4 = ((chk4 << 5) - chk4 + out4.charCodeAt(i)) | 0;
+      }
+      console.log(`[Reducer Diag] CACHE_FRAME ${action.index} output checksum=0x${(chk4 >>> 0).toString(16).padStart(8,'0')} outputLen=${out4.length}`);
+
       console.log(`[Reducer] CACHING frame ${action.index}, frames in cache: ${state.animation.frameCache.length}`);
       const cache = [...state.animation.frameCache];
       cache[action.index] = action.frame;
@@ -409,6 +417,17 @@ export function appReducer(state: AppState, action: Action): AppState {
       const maxIdx = state.animation.frameCache.length - 1;
       const idx = Math.max(0, Math.min(action.index, maxIdx));
       const cached = state.animation.frameCache[idx];
+
+      // --- DIAGNOSTIC Stage 5: Checksum cached.output ---
+      if (cached) {
+        let chk5 = 0;
+        const out5 = cached.output;
+        for (let i = 0; i < out5.length; i += 7) {
+          chk5 = ((chk5 << 5) - chk5 + out5.charCodeAt(i)) | 0;
+        }
+        console.log(`[Reducer Diag] SET_CURRENT_FRAME ${idx} output checksum=0x${(chk5 >>> 0).toString(16).padStart(8,'0')} outputLen=${out5.length}`);
+      }
+
       console.log("[Reducer] SET_CURRENT_FRAME", idx, "cached:", !!cached, "output len:", cached ? cached.output.length : "N/A");
       if (!cached) return { ...state, animation: { ...state.animation, currentFrame: idx } };
       return {
