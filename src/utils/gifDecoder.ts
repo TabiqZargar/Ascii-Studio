@@ -258,7 +258,7 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
 
       // --- Stage 2: LZW Decode ---
       mark("lzw");
-      const pixels = lzwDecodeOptimized(minCodeSize, lzwData, pixelBuffer);
+      const pixels = lzwDecodeOptimized(minCodeSize, lzwData, pixelBuffer, frames.length);
       totalLzwTime += measure("lzw");
 
       console.log("[GIF LZW RESULT]", {
@@ -467,6 +467,7 @@ function lzwDecodeOptimized(
   minCodeSize: number,
   data: number[],
   outputBuffer: Uint8Array,
+  frameIndex?: number,
 ): Uint8Array {
   const clearCode = 1 << minCodeSize;
   const eoiCode = clearCode + 1;
@@ -504,7 +505,7 @@ function lzwDecodeOptimized(
   function readBits(): number {
     while (bitsAvail < codeSize) {
       if (dataPos >= data.length) {
-        console.error("[LZW EXIT]", { reason: "truncated bitstream", decodedCodes, outputPos, nextCode, codeSize, code: -1, prev });
+        console.error("[LZW EXIT]", { frame: frameIndex, reason: "truncated bitstream", decodedCodes, outputPos, nextCode, codeSize, code: -1, prev });
         return eoiCode;
       }
       bits |= data[dataPos++] << bitsAvail;
@@ -526,7 +527,7 @@ function lzwDecodeOptimized(
     decodedCodes++;
   }
   if (prev === eoiCode) {
-    console.error("[LZW EXIT]", { reason: "first code was EOI", decodedCodes, outputPos, nextCode, codeSize, code: prev, prev });
+    console.error("[LZW EXIT]", { frame: frameIndex, reason: "first code was EOI", decodedCodes, outputPos, nextCode, codeSize, code: prev, prev });
     return outputBuffer.subarray(0, 0);
   }
 
@@ -540,7 +541,7 @@ function lzwDecodeOptimized(
     decodedCodes++;
 
     if (code === eoiCode) {
-      console.error("[LZW EXIT]", { reason: "EOI", decodedCodes, outputPos, nextCode, codeSize, code, prev });
+      console.error("[LZW EXIT]", { frame: frameIndex, reason: "EOI", decodedCodes, outputPos, nextCode, codeSize, code, prev });
       break;
     }
 
@@ -550,7 +551,7 @@ function lzwDecodeOptimized(
       console.log("[LZW] clear code", { decodedCodes, nextCode, codeSize, outputPos });
       prev = readBits();
       decodedCodes++;
-      if (prev === eoiCode) { console.error("[LZW EXIT]", { reason: "EOI after clear", decodedCodes, outputPos, nextCode, codeSize, code: prev, prev }); break; }
+      if (prev === eoiCode) { console.error("[LZW EXIT]", { frame: frameIndex, reason: "EOI after clear", decodedCodes, outputPos, nextCode, codeSize, code: prev, prev }); break; }
       if (prev < clearCode) outputBuffer[outputPos++] = prev;
       continue;
     }
@@ -584,6 +585,7 @@ function lzwDecodeOptimized(
       outputBuffer[outputPos++] = firstChar;
     } else {
       console.error("[LZW EXIT]", {
+        frame: frameIndex,
         reason: "invalid code",
         code,
         nextCode,
@@ -622,11 +624,12 @@ function lzwDecodeOptimized(
     }
   }
 
-  console.log({
-    finalOutputPixels: outputPos,
-    finalDictionarySize: nextCode,
-    finalCodeSize: codeSize,
-    finalDecodedCodes: decodedCodes
+  console.log("[LZW FINAL]", {
+    frame: frameIndex,
+    outputPos,
+    nextCode,
+    codeSize,
+    decodedCodes
   });
 
   return outputBuffer.subarray(0, outputPos);
