@@ -94,6 +94,9 @@ export default function App() {
 
     convertFrame(frame, params, (output, colorGrid) => {
       if (generationRef.current !== gen) { processingRef.current = false; return; }
+      let wh = 0x811c9dc5;
+      for (let i = 0; i < output.length; i++) { wh ^= output.charCodeAt(i); wh = Math.imul(wh, 0x01000193); }
+      console.log("[WORKER CHK] frame=" + idx + " outputHash=0x" + (wh >>> 0).toString(16).padStart(8, "0") + " len=" + output.length);
       dispatch({ type: "CACHE_FRAME", index: idx, frame: { output, colorGrid } });
       processingRef.current = false;
       processQueueRef.current();

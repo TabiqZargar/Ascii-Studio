@@ -61,7 +61,12 @@ export async function processUploadedFile(
       const rawFrames: ImageData[] = [];
       const timings: number[] = [];
       for (const idx of sampledIndices) {
-        rawFrames.push(gif.frames[idx].imageData);
+        const f = gif.frames[idx].imageData;
+        let h = 0x811c9dc5;
+        const d = f.data;
+        for (let i = 0; i < d.length; i++) { h ^= d[i]; h = Math.imul(h, 0x01000193); }
+        console.log("[PIPELINE CHK] rawFrames idx=" + idx + " frame=" + rawFrames.length + " hash=0x" + (h >>> 0).toString(16).padStart(8, "0") + " size=" + f.width + "x" + f.height);
+        rawFrames.push(f);
         timings.push(gif.frames[idx].delayMs);
       }
       const downsampleTime = performance.now() - downsampleStart;
