@@ -35,8 +35,11 @@ export interface GifResult {
 }
 
 export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
-  const view = new DataView(buffer);
-  let pos = 0;
+  console.log("[GIF] decodeGif ENTER", { byteLength: buffer.byteLength, targetWidth });
+
+  try {
+    const view = new DataView(buffer);
+    let pos = 0;
 
   function readUint16(): number {
     const v = view.getUint16(pos, true);
@@ -57,16 +60,22 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
     view.getUint8(pos + 2),
   );
   pos += 3;
-  if (signature !== "GIF") throw new Error("Not a GIF file");
+  if (signature !== "GIF") {
+    console.error("[GIF] THROW: Not a GIF file (signature=" + signature + ")");
+    throw new Error("Not a GIF file");
+  }
 
+  console.log("[GIF] Header parsed", { signature, version: String.fromCharCode(view.getUint8(pos), view.getUint8(pos+1), view.getUint8(pos+2)) });
   const version = String.fromCharCode(
     view.getUint8(pos),
     view.getUint8(pos + 1),
     view.getUint8(pos + 2),
   );
   pos += 3;
-  if (version !== "87a" && version !== "89a")
+  if (version !== "87a" && version !== "89a") {
+    console.error("[GIF] THROW: Unsupported GIF version", version);
     throw new Error("Unsupported GIF version");
+  }
 
   const width = readUint16();
   const height = readUint16();
@@ -88,6 +97,9 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       pos += 3;
     }
   }
+
+  console.log("[GIF] Logical Screen Descriptor parsed", { width, height, hasGCT, gctSize });
+  console.log("[GIF] Global Color Table parsed", { gctSize });
 
   const gifParseTime = measure("gifParse");
 
@@ -163,6 +175,7 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
     const blockType = readByte();
 
     if (blockType === 0x2c) {
+      console.log("[GIF] Frame " + frames.length + " start");
       // Image Descriptor
       const frameX = readUint16();
       const frameY = readUint16();
@@ -171,7 +184,20 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       const framePacked = readByte();
 
       const hasLCT = (framePacked & 0x80) !== 0;
+      const interlaced = (framePacked & 0x40) !== 0;
       const lctSize = hasLCT ? 2 ** ((framePacked & 0x07) + 1) : 0;
+      console.log("[GIF FRAME]", {
+        frame: frames.length,
+        left: frameX,
+        top: frameY,
+        width: frameW,
+        height: frameH,
+        expectedPixels: frameW * frameH,
+        interlaced,
+        hasLocalColorTable: hasLCT,
+        disposalMethod,
+        transparentIndex,
+      });
 
       let lctFlat: Uint8Array | null = null;
       if (hasLCT) {
@@ -235,11 +261,17 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       const pixels = lzwDecodeOptimized(minCodeSize, lzwData, pixelBuffer);
       totalLzwTime += measure("lzw");
 
+      console.log("[GIF LZW RESULT]", {
+        frame: frames.length,
+        decodedPixels: pixels.length,
+        expectedPixels: frameW * frameH,
+      });
+
       // ASSERTION: LZW Output
       if (pixels.length !== frameW * frameH) {
-        throw new Error(
-          `LZW Decode failed: expected ${frameW * frameH} pixels, got ${pixels.length}`,
-        );
+        const lzwMsg = `LZW Decode failed: expected ${frameW * frameH} pixels, got ${pixels.length}`;
+        console.error("[GIF] THROW:", lzwMsg);
+        throw new Error(lzwMsg);
       }
 
       // Grow buffer if needed
@@ -321,12 +353,21 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       const bufAddr = (frameData.data as unknown as { buffer: ArrayBuffer })
         .buffer.byteLength;
       console.log(
-        `[GIF Diag] Frame ${frameIndex} checksum=0x${(checksum >>> 0).toString(16).padStart(8, "0")} ` +
+        `[GIF Diag] Frame ${frames.length} checksum=0x${(checksum >>> 0).toString(16).padStart(8, "0")} ` +
           `bufLen=${frameData.data.length} bufAddr=${bufAddr} ` +
           `w=${frameData.width} h=${frameData.height}`,
       );
 
+      let hash = 0x811c9dc5;
+      const d = frameData.data;
+      for (let i = 0; i < d.length; i++) {
+        hash ^= d[i];
+        hash = Math.imul(hash, 0x01000193);
+      }
+      console.log("[GIF CHECK] frame=" + frames.length + " checksum=0x" + (hash >>> 0).toString(16).padStart(8, "0") + " pixels=" + frameData.width * frameData.height);
+
       frames.push({ imageData: frameData, delayMs, disposalMethod });
+      console.log("[GIF] Frame pushed, total:", frames.length);
 
       // Save current frame's info for the NEXT frame's disposal
       prevDisposal = disposalMethod;
@@ -370,6 +411,7 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
         }
       }
     } else if (blockType === 0x3b) {
+      console.log("[GIF] Trailer reached");
       break;
     } else if (blockType === 0x00) {
       // padding
@@ -378,15 +420,23 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
     }
   }
 
-  if (frames.length === 0) throw new Error("No frames found in GIF");
+  if (frames.length === 0) {
+    console.error("[GIF] THROW: No frames found in GIF");
+    throw new Error("No frames found in GIF");
+  }
 
   console.log(`[GIF Decoder] Decoded ${frames.length} frames.`);
   if (frames.length < 2) {
-    throw new Error(
-      `Expected animated GIF, but only found ${frames.length} frame(s)`,
-    );
+    const msg = `Expected animated GIF, but only found ${frames.length} frame(s)`;
+    console.error("[GIF] THROW:", msg);
+    throw new Error(msg);
   }
 
+  console.log("[GIF] returning", {
+    width: outW,
+    height: outH,
+    frameCount: frames.length,
+  });
   return {
     width: outW,
     height: outH,
@@ -398,6 +448,10 @@ export function decodeGif(buffer: ArrayBuffer, targetWidth = 0): GifResult {
       frameSnapshot: totalSnapshotTime,
     },
   };
+  } catch (err) {
+    console.error("[GIF] decodeGif FAILED", err);
+    throw err;
+  }
 }
 
 /**
@@ -420,6 +474,11 @@ function lzwDecodeOptimized(
   let nextCode = eoiCode + 1;
   const maxCode = 4096;
 
+  console.log("[LZW] clearCode =", clearCode);
+  console.log("[LZW] minCodeSize =", minCodeSize);
+  console.log("[LZW] initial codeSize =", codeSize);
+  console.log("[LZW] data length =", data.length);
+
   // Flat dictionary storage — cache-friendly
   const dictLens = new Uint16Array(maxCode);
   const dictPrefix = new Int32Array(maxCode);
@@ -436,43 +495,62 @@ function lzwDecodeOptimized(
   let bitsAvail = 0;
   let dataPos = 0;
 
-  // Fixed-size stack — never allocate per-code
-  const stackBuf = new Uint8Array(16);
+  // Fixed-size stack for chain reversal (max dictionary size = 4096)
+  const stackBuf = new Uint8Array(4096);
   let stackPos = 0;
+
+  let decodedCodes = 0;
 
   function readBits(): number {
     while (bitsAvail < codeSize) {
-      if (dataPos >= data.length) return eoiCode;
+      if (dataPos >= data.length) {
+        console.error("[LZW EXIT]", { reason: "truncated bitstream", decodedCodes, outputPos, nextCode, codeSize, code: -1, prev });
+        return eoiCode;
+      }
       bits |= data[dataPos++] << bitsAvail;
       bitsAvail += 8;
     }
-    const code = bits & ((1 << codeSize) - 1);
+    const result = bits & ((1 << codeSize) - 1);
     bits >>= codeSize;
     bitsAvail -= codeSize;
-    return code;
+    return result;
   }
 
   let prev = readBits();
+  decodedCodes++;
   if (prev === clearCode) {
     codeSize = minCodeSize + 1;
     nextCode = eoiCode + 1;
+    console.log("[LZW] initial clear code, reset, reading next code...");
     prev = readBits();
+    decodedCodes++;
   }
-  if (prev === eoiCode) return outputBuffer.subarray(0, 0);
+  if (prev === eoiCode) {
+    console.error("[LZW EXIT]", { reason: "first code was EOI", decodedCodes, outputPos, nextCode, codeSize, code: prev, prev });
+    return outputBuffer.subarray(0, 0);
+  }
 
   if (prev < clearCode) {
     outputBuffer[outputPos++] = prev;
   }
+  console.log("[LZW] First decoded code", { decodedCodes, code: prev, nextCode, codeSize, outputPos });
 
   for (;;) {
     const code = readBits();
-    if (code === eoiCode) break;
+    decodedCodes++;
+
+    if (code === eoiCode) {
+      console.error("[LZW EXIT]", { reason: "EOI", decodedCodes, outputPos, nextCode, codeSize, code, prev });
+      break;
+    }
 
     if (code === clearCode) {
       codeSize = minCodeSize + 1;
       nextCode = eoiCode + 1;
+      console.log("[LZW] clear code", { decodedCodes, nextCode, codeSize, outputPos });
       prev = readBits();
-      if (prev === eoiCode) break;
+      decodedCodes++;
+      if (prev === eoiCode) { console.error("[LZW EXIT]", { reason: "EOI after clear", decodedCodes, outputPos, nextCode, codeSize, code: prev, prev }); break; }
       if (prev < clearCode) outputBuffer[outputPos++] = prev;
       continue;
     }
@@ -480,33 +558,44 @@ function lzwDecodeOptimized(
     let firstChar: number;
 
     if (code < nextCode) {
-      // Decode chain using fixed stack
       let c = code;
       stackPos = 0;
       while (c >= clearCode && dictPrefix[c] !== -1) {
-        if (stackPos < 16) stackBuf[stackPos++] = dictSuffix[c];
+        stackBuf[stackPos++] = dictSuffix[c];
         c = dictPrefix[c];
       }
       firstChar = c;
-      // Write stack in reverse
+      outputBuffer[outputPos++] = firstChar;
       while (stackPos > 0) {
         outputBuffer[outputPos++] = stackBuf[--stackPos];
       }
     } else if (code === nextCode) {
-      // Special: code = nextCode (not yet in dictionary)
       let c = prev;
       stackPos = 0;
       while (c >= clearCode && dictPrefix[c] !== -1) {
-        if (stackPos < 16) stackBuf[stackPos++] = dictSuffix[c];
+        stackBuf[stackPos++] = dictSuffix[c];
         c = dictPrefix[c];
       }
       firstChar = c;
+      outputBuffer[outputPos++] = firstChar;
       while (stackPos > 0) {
         outputBuffer[outputPos++] = stackBuf[--stackPos];
       }
       outputBuffer[outputPos++] = firstChar;
     } else {
-      break; // invalid code
+      console.error("[LZW EXIT]", {
+        reason: "invalid code",
+        code,
+        nextCode,
+        prev,
+        outputPos,
+        decodedCodes,
+        codeSize,
+        bitsAvail,
+        bits,
+        dataPos
+      });
+      break;
     }
 
     if (nextCode < maxCode) {
@@ -514,12 +603,31 @@ function lzwDecodeOptimized(
       dictSuffix[nextCode] = firstChar;
       dictLens[nextCode] = dictLens[prev] + 1;
       nextCode++;
-      if (nextCode > 1 << codeSize && codeSize < 12) {
+      if (nextCode >= 1 << codeSize && codeSize < 12) {
         codeSize++;
+        console.log("[LZW] codeSize ->", codeSize, "nextCode =", nextCode);
       }
     }
     prev = code;
+
+    if (nextCode >= 480) {
+      console.log({
+        decodedCodes,
+        code,
+        prev,
+        nextCode,
+        codeSize,
+        outputPos
+      });
+    }
   }
+
+  console.log({
+    finalOutputPixels: outputPos,
+    finalDictionarySize: nextCode,
+    finalCodeSize: codeSize,
+    finalDecodedCodes: decodedCodes
+  });
 
   return outputBuffer.subarray(0, outputPos);
 }
