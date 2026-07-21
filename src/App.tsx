@@ -7,7 +7,6 @@ import type { ConvertParams } from "./hooks/useAsciiWorker";
 import { useDebounce } from "./hooks/useDebounce";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { applyTransform } from "./utils/image";
-import { _sampledFrameMeta } from "./utils/processFile";
 import { exportTxt, exportSvg, exportHtml, exportPng, exportProjectJson, exportGif, downloadBlob } from "./utils/export";
 import { saveProject, loadProjects } from "./utils/storage";
 import { CHAR_PRESETS } from "./data/presets";
@@ -43,7 +42,7 @@ export default function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
   const processQueueRef = useRef<() => void>(() => {});
-  const asciiChecksumsRef = useRef<Map<number, string>>(new Map());
+  let tickCounter = 0;
 
   const [screen, setScreen] = useState<"landing" | "workspace">(
     state.imageUrl ? "workspace" : "landing"
@@ -78,38 +77,69 @@ export default function App() {
   }, [state.charPresetId, state.customChars, state.canvas.asciiWidth, state.adjustments]);
 
   const processQueue = useCallback(() => {
-    if (processingRef.current || queueRef.current.length === 0) return;
+    console.log("[CHECK processing]", { processing: processingRef.current });
+    if (processingRef.current) {
+      console.log("[RETURN already processing]");
+      return;
+    }
+    console.log("[CHECK queue length]", { length: queueRef.current.length });
+    if (queueRef.current.length === 0) {
+      console.log("[RETURN queue empty]");
+      return;
+    }
+    console.log("[STEP] dequeue frame");
     const idx = queueRef.current.shift();
-    if (idx === undefined) return;
+    console.log("[CHECK idx]", { idx });
+    if (idx === undefined) {
+      console.log("[RETURN idx undefined]");
+      return;
+    }
 
+    console.log("[STEP] read animation state");
     const anim = stateRef.current.animation;
-    if (idx < 0 || idx >= anim.rawFrames.length) return;
-    if (anim.frameCache[idx] !== undefined) { processQueueRef.current(); return; }
-
-    processingRef.current = true;
-    const rawFrame = anim.rawFrames[idx];
-    const hasTransform = stateRef.current.transform.rotation !== 0 || stateRef.current.transform.flipH || stateRef.current.transform.flipV;
-    const frame = hasTransform ? applyTransform(rawFrame, stateRef.current.transform) : rawFrame;
-    const params = getConvertParams();
-    const gen = generationRef.current;
-
-    convertFrame(frame, params, (output, colorGrid) => {
-      if (generationRef.current !== gen) { processingRef.current = false; return; }
-      let ah = 0x811c9dc5;
-      for (let i = 0; i < output.length; i++) { ah ^= output.charCodeAt(i); ah = Math.imul(ah, 0x01000193); }
-      const asciiHash = "0x" + (ah >>> 0).toString(16).padStart(8, "0");
-      let rh = 0x811c9dc5;
-      const fd = frame.data;
-      for (let i = 0; i < fd.length; i++) { rh ^= fd[i]; rh = Math.imul(rh, 0x01000193); }
-      const rgbaHash = "0x" + (rh >>> 0).toString(16).padStart(8, "0");
-      const meta = _sampledFrameMeta.get(idx);
-      const originalFrame = meta ? meta.originalFrame : -1;
-      console.log("[SAMPLED FRAME] sampledIndex=" + idx + " originalFrame=" + originalFrame + " rgbaHash=" + rgbaHash + " asciiHash=" + asciiHash);
-      asciiChecksumsRef.current.set(idx, asciiHash);
-      dispatch({ type: "CACHE_FRAME", index: idx, frame: { output, colorGrid } });
-      processingRef.current = false;
+    console.log("[CHECK idx bounds]", { idx, rawFramesLen: anim.rawFrames.length });
+    if (idx < 0 || idx >= anim.rawFrames.length) {
+      console.log("[RETURN invalid idx]", { idx, rawFramesLen: anim.rawFrames.length });
+      return;
+    }
+    console.log("[CHECK frame cached]", { idx, cached: anim.frameCache[idx] !== undefined });
+    if (anim.frameCache[idx] !== undefined) {
+      console.log("[RETURN frame already cached]", { idx });
       processQueueRef.current();
-    });
+      return;
+    }
+
+    console.log("[QUEUE START]", { queueLength: queueRef.current.length, processing: processingRef.current, nextFrame: idx });
+
+    try {
+      console.log("[STEP] mark processing=true");
+      processingRef.current = true;
+      console.log("[STEP] get raw frame", { idx });
+      const rawFrame = anim.rawFrames[idx];
+      console.log("[STEP] apply transform");
+      const hasTransform = stateRef.current.transform.rotation !== 0 || stateRef.current.transform.flipH || stateRef.current.transform.flipV;
+      const frame = hasTransform ? applyTransform(rawFrame, stateRef.current.transform) : rawFrame;
+      console.log("[STEP] get convert params");
+      const params = getConvertParams();
+      const gen = generationRef.current;
+
+      convertFrame(frame, params, idx, (output, colorGrid) => {
+        console.log("[WORKER CALLBACK]", { frameIndex: idx });
+        console.log("[CHECK generation]", { gen, currentGen: generationRef.current, match: generationRef.current === gen });
+        if (generationRef.current !== gen) { processingRef.current = false; console.log("[RETURN stale generation]", { frameIndex: idx }); return; }
+        console.log("[AWAIT RETURNED]", { frameIndex: idx });
+        const beforeCached = stateRef.current.animation.cachedCount;
+        console.log("[STEP] dispatch CACHE_FRAME", { frameIndex: idx });
+        dispatch({ type: "CACHE_FRAME", index: idx, frame: { output, colorGrid } });
+        console.log("[CACHE SIZE]", { sizeAfterInsert: beforeCached + 1, frameIndex: idx });
+        processingRef.current = false;
+        console.log("[STEP] processQueue recursive");
+        processQueueRef.current();
+      });
+    } catch (err) {
+      console.error("[QUEUE ERROR]", err);
+      throw err;
+    }
   }, [convertFrame, getConvertParams]);
 
   processQueueRef.current = processQueue;
@@ -148,22 +178,6 @@ export default function App() {
   }, [state.animation.rawFrames, state.animation.cachedCount, processQueue]);
 
   useEffect(() => {
-    const total = state.animation.rawFrames.length;
-    if (total === 0) { asciiChecksumsRef.current.clear(); return; }
-    if (state.animation.cachedCount === total && state.animation.cachedCount > 0) {
-      const hashes = [...asciiChecksumsRef.current.values()];
-      const unique = new Set(hashes);
-      const dupes: number[] = [];
-      const seen = new Map<string, number>();
-      for (const [frameIdx, hash] of asciiChecksumsRef.current) {
-        if (seen.has(hash)) dupes.push(frameIdx);
-        else seen.set(hash, frameIdx);
-      }
-      console.log("[ASCII SUMMARY]", JSON.stringify({ frameCount: total, uniqueAsciiHashes: unique.size, duplicateFrames: dupes.sort((a, b) => a - b) }));
-    }
-  }, [state.animation.cachedCount, state.animation.rawFrames.length]);
-
-  useEffect(() => {
     if (!state.animation.playing || state.animation.rawFrames.length === 0) return;
     const cur = state.animation.currentFrame;
     const total = state.animation.rawFrames.length;
@@ -200,37 +214,58 @@ export default function App() {
   }, [state.charPresetId, state.canvas.asciiWidth, state.adjustments, state.animation.rawFrames, state.animation.frameTimings, state.animation.sourceFps, state.animation.currentFrame, processQueue, dispatch]);
 
   useEffect(() => {
-    if (state.animation.playing && state.animation.rawFrames.length > 0) {
-      const interval = 1000 / state.animation.fps;
+    console.log("[EFFECT ENTER]");
+    const condition = state.animation.playing && state.animation.rawFrames.length > 0;
+    console.log("[EFFECT CONDITION]", JSON.stringify({ playing: state.animation.playing, rawFrames: state.animation.rawFrames.length, result: condition }));
+    if (condition) {
+      const delay = 1000 / state.animation.fps;
+      console.log("[INTERVAL CREATED]", JSON.stringify({ fps: state.animation.fps, delay }));
       animTimerRef.current = window.setInterval(() => {
+        console.log("[TICK ENTER]", {
+          currentFrame: stateRef.current.animation.currentFrame,
+          rawFrames: stateRef.current.animation.rawFrames.length,
+          cachedCount: stateRef.current.animation.cachedCount,
+          playing: stateRef.current.animation.playing,
+          loop: stateRef.current.animation.loop
+        });
         const total = stateRef.current.animation.rawFrames.length;
         const cur = animFrameRef.current;
         const nextIdx = cur + 1;
 
         if (nextIdx >= total) {
           if (stateRef.current.animation.loop) {
+            console.log("[DISPATCH]", { nextFrame: 0 });
             dispatch({ type: "SET_CURRENT_FRAME", index: 0 });
+            console.log("[DISPATCH COMPLETE]", { nextFrame: 0, currentFrame: stateRef.current.animation.currentFrame });
           } else {
-            dispatch({ type: "TOGGLE_PLAY" });
+            console.log("[RETURN]", { reason: "end-no-loop", currentFrame: cur, nextIdx, totalFrames: total, cachedFrameExists: !!stateRef.current.animation.frameCache[nextIdx < total ? nextIdx : 0] });
           }
         } else {
-          if (stateRef.current.animation.frameCache[nextIdx]) {
+          const exists = !!stateRef.current.animation.frameCache[nextIdx];
+          if (exists) {
+            console.log("[DISPATCH]", { nextFrame: nextIdx });
             dispatch({ type: "SET_CURRENT_FRAME", index: nextIdx });
+            console.log("[DISPATCH COMPLETE]", { nextFrame: nextIdx, currentFrame: stateRef.current.animation.currentFrame });
           } else {
             let found = -1;
             for (let i = nextIdx; i < total; i++) {
               if (stateRef.current.animation.frameCache[i]) { found = i; break; }
             }
             if (found >= 0) {
+              console.log("[DISPATCH]", { nextFrame: found });
               dispatch({ type: "SET_CURRENT_FRAME", index: found });
+              console.log("[DISPATCH COMPLETE]", { nextFrame: found, currentFrame: stateRef.current.animation.currentFrame });
+            } else {
+              console.log("[RETURN]", { reason: "no-cached-frame", currentFrame: cur, nextIdx, totalFrames: total, cachedFrameExists: false });
             }
           }
         }
-      }, interval);
+      }, delay);
     }
 
     return () => {
       if (animTimerRef.current) {
+        console.log("[STRICT MODE CLEANUP]");
         clearInterval(animTimerRef.current);
         animTimerRef.current = null;
       }

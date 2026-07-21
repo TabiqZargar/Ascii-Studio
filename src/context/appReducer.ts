@@ -387,7 +387,7 @@ export function appReducer(state: AppState, action: Action): AppState {
           frameCache: cache,
           pendingFrames: [],
           currentFrame: 0,
-          playing: false,
+          playing: true,
           cachedCount: 0,
         },
       };
@@ -408,6 +408,9 @@ export function appReducer(state: AppState, action: Action): AppState {
       const maxIdx = state.animation.frameCache.length - 1;
       const idx = Math.max(0, Math.min(action.index, maxIdx));
       const cached = state.animation.frameCache[idx];
+      const before = state.animation.currentFrame;
+      const after = cached ? idx : before;
+      console.log("[REDUCER]", JSON.stringify({ currentFrame: before + " -> " + after }));
       if (!cached) return { ...state, animation: { ...state.animation, currentFrame: idx } };
       return {
         ...state,

@@ -77,6 +77,12 @@ const AsciiCanvas = forwardRef<HTMLDivElement, Props>(function AsciiCanvas({ asc
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [shapeStart, setShapeStart] = useState<{ row: number; col: number } | null>(null);
+  const lastRenderFrameRef = useRef<number>(-1);
+  const curFrame = state.animation.currentFrame;
+  if (curFrame !== lastRenderFrameRef.current) {
+    lastRenderFrameRef.current = curFrame;
+    console.log("[CANVAS]", JSON.stringify({ renderedFrame: curFrame }));
+  }
 
   const setRefs = useCallback((el: HTMLDivElement | null) => {
     (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;

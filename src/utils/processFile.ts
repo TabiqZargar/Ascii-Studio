@@ -71,7 +71,6 @@ export async function processUploadedFile(
         for (let i = 0; i < d.length; i++) { h ^= d[i]; h = Math.imul(h, 0x01000193); }
         const hashStr = "0x" + (h >>> 0).toString(16).padStart(8, "0");
         _sampledFrameMeta.set(i, { originalFrame: idx, rgbaHash: hashStr });
-        console.log("[SAMPLED FRAME] sampledIndex=" + i + " originalFrame=" + idx + " rgbaHash=" + hashStr);
         rgbaHashes.add(hashStr);
         rawFrames.push(f);
         timings.push(gif.frames[idx].delayMs);
@@ -116,8 +115,6 @@ export async function processUploadedFile(
         sourceWidth: gif.width,
         sourceHeight: gif.height,
       });
-
-      console.log("[ANIMATION SUMMARY] frameCount=" + gif.frames.length + " uniqueRGBAHashes=" + rgbaHashes.size);
 
       callbacks?.onSuccess?.();
     } catch {

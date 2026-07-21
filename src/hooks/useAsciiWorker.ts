@@ -10,7 +10,7 @@ export interface ConvertParams {
 
 type PendingRequest =
   | { type: "single"; onResult: (output: string, colorGrid: string[][]) => void }
-  | { type: "frame"; onResult: (output: string, colorGrid: string[][]) => void }
+  | { type: "frame"; frameIndex?: number; onResult: (output: string, colorGrid: string[][]) => void }
   | {
       type: "batch";
       onProgress: (current: number, total: number) => void;
@@ -34,18 +34,31 @@ export function useAsciiWorker() {
       if (!pending) return;
 
       if (pending.type === "single" || pending.type === "frame") {
+        console.log("[ONMESSAGE]", { type: pending.type, frameIndex: pending.type === "frame" ? pending.frameIndex : undefined });
         if (e.data.output !== undefined) {
+          console.log("[PROMISE RESOLVE]", { type: pending.type, frameIndex: pending.type === "frame" ? pending.frameIndex : undefined });
           pending.onResult(e.data.output, e.data.colorGrid);
           pendingRef.current = null;
+        } else {
+          console.log("[PROMISE REJECT]", { type: pending.type, reason: "output undefined" });
         }
       } else if (pending.type === "batch") {
         if (e.data.type === "progress") {
           pending.onProgress(e.data.current, e.data.total);
         } else if (e.data.type === "batch-done") {
+          console.log("[ONMESSAGE]", { type: "batch" });
           pending.onDone(e.data.results);
           pendingRef.current = null;
         }
       }
+    };
+
+    worker.onerror = (err) => {
+      console.log("[WORKER ERROR]", err);
+    };
+
+    worker.onmessageerror = (err) => {
+      console.log("[MESSAGE ERROR]", err);
     };
 
     return () => {
@@ -85,11 +98,14 @@ export function useAsciiWorker() {
     (
       imageData: ImageData,
       params: ConvertParams,
+      frameIndex: number,
       onResult: (output: string, colorGrid: string[][]) => void
     ) => {
-      if (!workerRef.current) return;
-      pendingRef.current = { type: "frame", onResult };
+      console.log("[CONVERT ENTER]", { frameIndex });
+      if (!workerRef.current) { console.log("[CONVERT RETURN] no worker"); return; }
+      pendingRef.current = { type: "frame", frameIndex, onResult };
 
+      console.log("[POST MESSAGE]", { frameIndex });
       workerRef.current.postMessage({
         imageData,
         charset: params.charset,
