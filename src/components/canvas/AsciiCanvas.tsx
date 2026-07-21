@@ -140,10 +140,6 @@ const AsciiCanvas = forwardRef<HTMLDivElement, Props>(function AsciiCanvas({ asc
   const lines = asciiOutput ? asciiOutput.split("\n") : [];
   const { fontSize, lineHeight, letterSpacing, fontFamily } = state.canvas;
 
-  let renderHash = 0x811c9dc5;
-  for (let i = 0; i < asciiOutput.length; i++) { renderHash ^= asciiOutput.charCodeAt(i); renderHash = Math.imul(renderHash, 0x01000193); }
-  console.log("[RENDER CHK] Stage 14 asciiOutput hash=0x" + (renderHash >>> 0).toString(16).padStart(8, "0") + " len=" + asciiOutput.length);
-
   const handleCharMouseDown = useCallback((row: number, col: number, e: React.MouseEvent) => {
     if (state.activeLayerId !== "ascii-layer" || asciiLayer?.locked) return;
     e.stopPropagation();

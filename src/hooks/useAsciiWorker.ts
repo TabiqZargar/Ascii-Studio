@@ -87,7 +87,6 @@ export function useAsciiWorker() {
       params: ConvertParams,
       onResult: (output: string, colorGrid: string[][]) => void
     ) => {
-      console.log("[PIPELINE] Stage 9: convertFrame called");
       if (!workerRef.current) return;
       pendingRef.current = { type: "frame", onResult };
 

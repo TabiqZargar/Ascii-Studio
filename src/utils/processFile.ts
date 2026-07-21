@@ -8,6 +8,8 @@ const TARGET_FPS = 12;
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+export const _sampledFrameMeta = new Map<number, { originalFrame: number, rgbaHash: string }>();
+
 export interface ProcessFileCallbacks {
   onSuccess?: () => void;
   onError?: (message: string) => void;
@@ -40,7 +42,6 @@ export async function processUploadedFile(
     try {
       const buffer = await file.arrayBuffer();
       const decodeStart = performance.now();
-      console.log("[PIPELINE] Stage 5: calling decodeGif from shared pipeline");
       const gif = decodeGif(buffer, targetWidth);
       const decodeTime = performance.now() - decodeStart;
 
@@ -60,12 +61,18 @@ export async function processUploadedFile(
       const downsampleStart = performance.now();
       const rawFrames: ImageData[] = [];
       const timings: number[] = [];
-      for (const idx of sampledIndices) {
+      const rgbaHashes = new Set<string>();
+      _sampledFrameMeta.clear();
+      for (let i = 0; i < sampledIndices.length; i++) {
+        const idx = sampledIndices[i];
         const f = gif.frames[idx].imageData;
         let h = 0x811c9dc5;
         const d = f.data;
         for (let i = 0; i < d.length; i++) { h ^= d[i]; h = Math.imul(h, 0x01000193); }
-        console.log("[PIPELINE CHK] rawFrames idx=" + idx + " frame=" + rawFrames.length + " hash=0x" + (h >>> 0).toString(16).padStart(8, "0") + " size=" + f.width + "x" + f.height);
+        const hashStr = "0x" + (h >>> 0).toString(16).padStart(8, "0");
+        _sampledFrameMeta.set(i, { originalFrame: idx, rgbaHash: hashStr });
+        console.log("[SAMPLED FRAME] sampledIndex=" + i + " originalFrame=" + idx + " rgbaHash=" + hashStr);
+        rgbaHashes.add(hashStr);
         rawFrames.push(f);
         timings.push(gif.frames[idx].delayMs);
       }
@@ -82,7 +89,6 @@ export async function processUploadedFile(
       ctx.putImageData(firstScaled, 0, 0);
       const thumbUrl = canvas.toDataURL("image/png");
 
-      console.log("[PIPELINE] Stage 6: dispatching INIT_ANIMATION");
       dispatch({ type: "INIT_ANIMATION", rawFrames, timings, sourceFps });
       dispatch({
         type: "SET_IMAGE",
@@ -111,10 +117,12 @@ export async function processUploadedFile(
         sourceHeight: gif.height,
       });
 
+      console.log("[ANIMATION SUMMARY] frameCount=" + gif.frames.length + " uniqueRGBAHashes=" + rgbaHashes.size);
+
       callbacks?.onSuccess?.();
     } catch {
       dispatch({ type: "SET_LOADING", loading: false });
-      callbacks?.onError?.("Failed to process GIF. It may be corrupted.");
+      callbacks?.onError?.("Failed to process GIF.");
     }
   } else if (isWebP) {
     dispatch({ type: "SET_LOADING", loading: true });

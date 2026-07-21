@@ -7,6 +7,7 @@ import type { ConvertParams } from "./hooks/useAsciiWorker";
 import { useDebounce } from "./hooks/useDebounce";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { applyTransform } from "./utils/image";
+import { _sampledFrameMeta } from "./utils/processFile";
 import { exportTxt, exportSvg, exportHtml, exportPng, exportProjectJson, exportGif, downloadBlob } from "./utils/export";
 import { saveProject, loadProjects } from "./utils/storage";
 import { CHAR_PRESETS } from "./data/presets";
@@ -42,6 +43,7 @@ export default function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
   const processQueueRef = useRef<() => void>(() => {});
+  const asciiChecksumsRef = useRef<Map<number, string>>(new Map());
 
   const [screen, setScreen] = useState<"landing" | "workspace">(
     state.imageUrl ? "workspace" : "landing"
@@ -76,7 +78,6 @@ export default function App() {
   }, [state.charPresetId, state.customChars, state.canvas.asciiWidth, state.adjustments]);
 
   const processQueue = useCallback(() => {
-    console.log("[PIPELINE] Stage 8: processQueue called");
     if (processingRef.current || queueRef.current.length === 0) return;
     const idx = queueRef.current.shift();
     if (idx === undefined) return;
@@ -94,9 +95,17 @@ export default function App() {
 
     convertFrame(frame, params, (output, colorGrid) => {
       if (generationRef.current !== gen) { processingRef.current = false; return; }
-      let wh = 0x811c9dc5;
-      for (let i = 0; i < output.length; i++) { wh ^= output.charCodeAt(i); wh = Math.imul(wh, 0x01000193); }
-      console.log("[WORKER CHK] frame=" + idx + " outputHash=0x" + (wh >>> 0).toString(16).padStart(8, "0") + " len=" + output.length);
+      let ah = 0x811c9dc5;
+      for (let i = 0; i < output.length; i++) { ah ^= output.charCodeAt(i); ah = Math.imul(ah, 0x01000193); }
+      const asciiHash = "0x" + (ah >>> 0).toString(16).padStart(8, "0");
+      let rh = 0x811c9dc5;
+      const fd = frame.data;
+      for (let i = 0; i < fd.length; i++) { rh ^= fd[i]; rh = Math.imul(rh, 0x01000193); }
+      const rgbaHash = "0x" + (rh >>> 0).toString(16).padStart(8, "0");
+      const meta = _sampledFrameMeta.get(idx);
+      const originalFrame = meta ? meta.originalFrame : -1;
+      console.log("[SAMPLED FRAME] sampledIndex=" + idx + " originalFrame=" + originalFrame + " rgbaHash=" + rgbaHash + " asciiHash=" + asciiHash);
+      asciiChecksumsRef.current.set(idx, asciiHash);
       dispatch({ type: "CACHE_FRAME", index: idx, frame: { output, colorGrid } });
       processingRef.current = false;
       processQueueRef.current();
@@ -139,6 +148,22 @@ export default function App() {
   }, [state.animation.rawFrames, state.animation.cachedCount, processQueue]);
 
   useEffect(() => {
+    const total = state.animation.rawFrames.length;
+    if (total === 0) { asciiChecksumsRef.current.clear(); return; }
+    if (state.animation.cachedCount === total && state.animation.cachedCount > 0) {
+      const hashes = [...asciiChecksumsRef.current.values()];
+      const unique = new Set(hashes);
+      const dupes: number[] = [];
+      const seen = new Map<string, number>();
+      for (const [frameIdx, hash] of asciiChecksumsRef.current) {
+        if (seen.has(hash)) dupes.push(frameIdx);
+        else seen.set(hash, frameIdx);
+      }
+      console.log("[ASCII SUMMARY]", JSON.stringify({ frameCount: total, uniqueAsciiHashes: unique.size, duplicateFrames: dupes.sort((a, b) => a - b) }));
+    }
+  }, [state.animation.cachedCount, state.animation.rawFrames.length]);
+
+  useEffect(() => {
     if (!state.animation.playing || state.animation.rawFrames.length === 0) return;
     const cur = state.animation.currentFrame;
     const total = state.animation.rawFrames.length;
@@ -176,7 +201,6 @@ export default function App() {
 
   useEffect(() => {
     if (state.animation.playing && state.animation.rawFrames.length > 0) {
-      console.log("[PIPELINE] Stage 13: playback timer started");
       const interval = 1000 / state.animation.fps;
       animTimerRef.current = window.setInterval(() => {
         const total = stateRef.current.animation.rawFrames.length;

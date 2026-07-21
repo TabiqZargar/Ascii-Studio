@@ -313,7 +313,6 @@ export async function decodeAnimatedWebP(
       for (let j = 0; j < f.imageData.data.length; j += 200) s += f.imageData.data[j];
       return { frame: i, pixelSum: s, w: f.imageData.width, h: f.imageData.height };
     });
-    console.log("[WebP decode] frame checksums:", sums);
   }
 
   return {

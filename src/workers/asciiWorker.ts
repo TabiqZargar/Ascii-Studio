@@ -111,7 +111,6 @@ self.onmessage = (e: MessageEvent) => {
     adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean };
   };
 
-  console.log("[PIPELINE] Stage 10: worker processing frame");
   const result = convertFrame(imageData, charset, width, adjustments);
   self.postMessage(result);
 };

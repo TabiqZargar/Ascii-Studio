@@ -375,7 +375,6 @@ export function appReducer(state: AppState, action: Action): AppState {
       };
     }
     case "INIT_ANIMATION": {
-      console.log("[PIPELINE] Stage 7: reducer INIT_ANIMATION — frames:", action.rawFrames.length);
       const cache = new Array<import("../types").AsciiFrame | undefined>(action.rawFrames.length);
       return {
         ...state,
@@ -394,10 +393,6 @@ export function appReducer(state: AppState, action: Action): AppState {
       };
     }
     case "CACHE_FRAME": {
-      let ch = 0x811c9dc5;
-      const out = action.frame.output;
-      for (let i = 0; i < out.length; i++) { ch ^= out.charCodeAt(i); ch = Math.imul(ch, 0x01000193); }
-      console.log("[REDUCER CHK] CACHE_FRAME index=" + action.index + " outputHash=0x" + (ch >>> 0).toString(16).padStart(8, "0") + " outputLen=" + out.length);
       const cache = [...state.animation.frameCache];
       cache[action.index] = action.frame;
       const cachedCount = cache.filter((f) => f !== undefined).length;
@@ -413,14 +408,6 @@ export function appReducer(state: AppState, action: Action): AppState {
       const maxIdx = state.animation.frameCache.length - 1;
       const idx = Math.max(0, Math.min(action.index, maxIdx));
       const cached = state.animation.frameCache[idx];
-      if (cached) {
-        let ch = 0x811c9dc5;
-        const o = cached.output;
-        for (let i = 0; i < o.length; i++) { ch ^= o.charCodeAt(i); ch = Math.imul(ch, 0x01000193); }
-        console.log("[PLAYBACK CHK] SET_CURRENT_FRAME index=" + idx + " outputHash=0x" + (ch >>> 0).toString(16).padStart(8, "0"));
-      } else {
-        console.log("[PLAYBACK CHK] SET_CURRENT_FRAME index=" + idx + " (NOT CACHED)");
-      }
       if (!cached) return { ...state, animation: { ...state.animation, currentFrame: idx } };
       return {
         ...state,
