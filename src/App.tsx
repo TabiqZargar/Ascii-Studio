@@ -27,6 +27,20 @@ import Histogram from "./components/panels/Histogram";
 const INITIAL_FAST_COUNT = 3;
 const PREBUFFER_COUNT = 5;
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    handler(mq);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(appReducer, initialState, (init) => ({
     ...init,
@@ -48,7 +62,9 @@ export default function App() {
     state.imageUrl ? "workspace" : "landing"
   );
   const [activeDockSection, setActiveDockSection] = useState<DockSection>("characters");
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (state.imageUrl && screen === "landing") {
@@ -336,6 +352,10 @@ export default function App() {
 
   const isAnimating = state.animation.rawFrames.length > 0;
 
+  const mainPadding = isMobile
+    ? { paddingLeft: 0, paddingRight: 0, paddingTop: 60, paddingBottom: isAnimating ? 130 : 120 }
+    : { paddingLeft: 80, paddingRight: 332, paddingTop: 80, paddingBottom: isAnimating ? 120 : 52 };
+
   return (
     <AppContext.Provider value={state}>
       <DispatchContext.Provider value={dispatch}>
@@ -347,20 +367,41 @@ export default function App() {
           ) : (
             <>
               {!state.fullscreen && <Navbar />}
-              {!state.fullscreen && <Dock activeSection={activeDockSection} onSectionChange={setActiveDockSection} />}
-              {!state.fullscreen && <Inspector section={activeDockSection} />}
+              {!state.fullscreen && (
+                <Dock
+                  activeSection={activeDockSection}
+                  onSectionChange={setActiveDockSection}
+                  mobileInspectorOpen={mobileInspectorOpen}
+                  onMobileInspectorToggle={() => setMobileInspectorOpen((prev) => !prev)}
+                />
+              )}
+              {!state.fullscreen && (
+                <Inspector
+                  section={activeDockSection}
+                  mobileOpen={mobileInspectorOpen}
+                  onCloseMobile={() => setMobileInspectorOpen(false)}
+                />
+              )}
 
-              <main className="absolute inset-0 z-20" style={{ paddingLeft: 80, paddingRight: 332, paddingTop: 80, paddingBottom: isAnimating ? 120 : 52 }}>
+              <main
+                className="absolute inset-0 z-20"
+                style={{
+                  paddingLeft: state.fullscreen ? 0 : mainPadding.paddingLeft,
+                  paddingRight: state.fullscreen ? 0 : mainPadding.paddingRight,
+                  paddingTop: state.fullscreen ? 0 : mainPadding.paddingTop,
+                  paddingBottom: state.fullscreen ? 0 : mainPadding.paddingBottom,
+                }}
+              >
                 <div
                   ref={canvasContainerRef}
-                  className="relative w-full h-full glass-panel rounded-2xl checkerboard shadow-inner"
+                  className="relative w-full h-full glass-panel md:rounded-2xl checkerboard shadow-inner"
                 >
                   {state.comparisonMode ? (
                     <ComparisonSlider asciiOutput={state.asciiOutput} colorGrid={state.colorGrid} />
                   ) : state.imageUrl ? (
                     <AsciiCanvas asciiOutput={state.asciiOutput} colorGrid={state.colorGrid} />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center p-8">
+                    <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8">
                       <Upload />
                     </div>
                   )}
@@ -368,7 +409,7 @@ export default function App() {
                   {state.imageUrl && <FloatingZoom containerRef={canvasContainerRef} />}
 
                   {state.loading && (
-                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-2xl">
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm md:rounded-2xl">
                       <div className="flex flex-col items-center gap-3">
                         <div className="h-8 w-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary" />
                         <span className="text-sm text-on-surface-variant">Processing...</span>
@@ -381,7 +422,7 @@ export default function App() {
               {isAnimating && <Timeline />}
 
               {!state.fullscreen && state.imageUrl && !isAnimating && (
-                <div className="fixed bottom-3 left-20 right-3 z-30 flex items-center gap-3 rounded-xl bg-surface/60 backdrop-blur-xl border border-outline-variant/20 px-4 py-2">
+                <div className="fixed bottom-14 md:bottom-3 left-0 md:left-20 right-0 md:right-3 z-30 flex items-center gap-3 rounded-none md:rounded-xl bg-surface/80 md:bg-surface/60 backdrop-blur-xl border-t md:border border-outline-variant/20 px-3 md:px-4 py-2">
                   <Histogram imageData={state.imageData} />
                 </div>
               )}

@@ -26,23 +26,23 @@ export default function FloatingZoom({ containerRef }: Props) {
   };
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-1 glass-panel rounded-full shadow-2xl z-30">
-      <button onClick={zoomIn} className="p-2 hover:bg-white/5 rounded-full text-on-surface-variant transition-colors">
-        <span className="material-symbols-outlined">zoom_in</span>
+    <div className="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-2 p-1 glass-panel rounded-full shadow-2xl z-30">
+      <button onClick={zoomIn} className="p-1.5 sm:p-2 hover:bg-white/5 rounded-full text-on-surface-variant transition-colors">
+        <span className="material-symbols-outlined text-[20px] sm:text-[24px]">zoom_in</span>
       </button>
-      <button onClick={zoomOut} className="p-2 hover:bg-white/5 rounded-full text-on-surface-variant transition-colors">
-        <span className="material-symbols-outlined">zoom_out</span>
+      <button onClick={zoomOut} className="p-1.5 sm:p-2 hover:bg-white/5 rounded-full text-on-surface-variant transition-colors">
+        <span className="material-symbols-outlined text-[20px] sm:text-[24px]">zoom_out</span>
       </button>
-      <div className="w-px h-4 bg-outline-variant/30 mx-1" />
-      <button className="px-4 py-1.5 text-xs font-mono text-on-surface-variant hover:text-on-surface transition-colors">
+      <div className="w-px h-4 bg-outline-variant/30 mx-0.5 sm:mx-1" />
+      <button className="px-2 sm:px-4 py-1.5 text-[10px] sm:text-xs font-mono text-on-surface-variant hover:text-on-surface transition-colors">
         {Math.round(state.zoom * 100)}%
       </button>
-      <div className="w-px h-4 bg-outline-variant/30 mx-1" />
-      <button onClick={fit} className="p-2 hover:bg-white/5 rounded-full text-on-surface-variant transition-colors" title="Fit to view">
-        <span className="material-symbols-outlined">fit_screen</span>
+      <div className="w-px h-4 bg-outline-variant/30 mx-0.5 sm:mx-1" />
+      <button onClick={fit} className="p-1.5 sm:p-2 hover:bg-white/5 rounded-full text-on-surface-variant transition-colors" title="Fit to view">
+        <span className="material-symbols-outlined text-[20px] sm:text-[24px]">fit_screen</span>
       </button>
-      <button onClick={reset} className="p-2 hover:bg-white/5 rounded-full text-on-surface-variant transition-colors" title="Reset view">
-        <span className="material-symbols-outlined">refresh</span>
+      <button onClick={reset} className="p-1.5 sm:p-2 hover:bg-white/5 rounded-full text-on-surface-variant transition-colors" title="Reset view">
+        <span className="material-symbols-outlined text-[20px] sm:text-[24px]">refresh</span>
       </button>
     </div>
   );

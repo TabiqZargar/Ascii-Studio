@@ -7,9 +7,11 @@ import ExportDialog from "../common/ExportDialog";
 
 interface Props {
   section: DockSection;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
 }
 
-export default function Inspector({ section }: Props) {
+export default function Inspector({ section, mobileOpen, onCloseMobile }: Props) {
   const state = useApp();
   const dispatch = useDispatch();
 
@@ -23,31 +25,68 @@ export default function Inspector({ section }: Props) {
   }[section];
 
   return (
-    <aside className="fixed right-3 top-[100px] z-40 flex flex-col p-4 rounded-xl w-80 max-h-[calc(100vh-200px)] bg-surface/60 backdrop-blur-xl border border-outline-variant/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-medium text-secondary">{sectionTitle}</h3>
-          <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Properties</p>
+    <>
+      {/* Desktop: Right sidebar */}
+      <aside className="hidden md:flex fixed right-3 top-[100px] z-40 flex-col p-4 rounded-xl w-80 max-h-[calc(100vh-200px)] bg-surface/60 backdrop-blur-xl border border-outline-variant/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden animate-float stagger-3">
+        <InspectorHeader sectionTitle={sectionTitle} />
+        <div className="space-y-6 overflow-y-auto pr-2 flex-1 min-h-0">
+          {section === "characters" && <CharactersSection state={state} dispatch={dispatch} />}
+          {section === "brush" && <BrushSection state={state} dispatch={dispatch} />}
+          {section === "colors" && <ColorsSection state={state} dispatch={dispatch} />}
+          {section === "layers" && <LayersSection state={state} dispatch={dispatch} />}
+          {section === "export" && <ExportSection />}
+          {section === "upload" && <UploadSection state={state} dispatch={dispatch} />}
         </div>
-        <div className="flex gap-2">
-          <button className="text-secondary p-1 rounded">
-            <span className="material-symbols-outlined text-sm">tune</span>
-          </button>
-          <button className="text-on-surface-variant hover:bg-secondary/10 p-1 rounded">
-            <span className="material-symbols-outlined text-sm">settings</span>
-          </button>
-        </div>
-      </div>
+      </aside>
 
-      <div className="space-y-6 overflow-y-auto pr-2 flex-1 min-h-0">
-        {section === "characters" && <CharactersSection state={state} dispatch={dispatch} />}
-        {section === "brush" && <BrushSection state={state} dispatch={dispatch} />}
-        {section === "colors" && <ColorsSection state={state} dispatch={dispatch} />}
-        {section === "layers" && <LayersSection state={state} dispatch={dispatch} />}
-        {section === "export" && <ExportSection />}
-        {section === "upload" && <UploadSection state={state} dispatch={dispatch} />}
+      {/* Mobile: Bottom sheet */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" onClick={onCloseMobile} />
+          <div className="relative z-10 max-h-[70vh] rounded-t-2xl bg-surface/95 backdrop-blur-xl border-t border-primary/15 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-slideUp">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-outline-variant/10">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-1 rounded-full bg-on-surface-variant/30 mx-auto" />
+              </div>
+              <button onClick={onCloseMobile} className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+            <div className="px-4 pt-2 pb-1">
+              <h3 className="text-sm font-medium text-secondary">{sectionTitle}</h3>
+              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Properties</p>
+            </div>
+            <div className="space-y-6 overflow-y-auto px-4 pb-6 flex-1 min-h-0">
+              {section === "characters" && <CharactersSection state={state} dispatch={dispatch} />}
+              {section === "brush" && <BrushSection state={state} dispatch={dispatch} />}
+              {section === "colors" && <ColorsSection state={state} dispatch={dispatch} />}
+              {section === "layers" && <LayersSection state={state} dispatch={dispatch} />}
+              {section === "export" && <ExportSection />}
+              {section === "upload" && <UploadSection state={state} dispatch={dispatch} />}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function InspectorHeader({ sectionTitle }: { sectionTitle: string }) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <div>
+        <h3 className="text-sm font-medium text-secondary">{sectionTitle}</h3>
+        <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Properties</p>
       </div>
-    </aside>
+      <div className="flex gap-2">
+        <button className="text-secondary p-1 rounded">
+          <span className="material-symbols-outlined text-sm">tune</span>
+        </button>
+        <button className="text-on-surface-variant hover:bg-secondary/10 p-1 rounded">
+          <span className="material-symbols-outlined text-sm">settings</span>
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -56,7 +95,7 @@ function CharactersSection({ state, dispatch }: { state: ReturnType<typeof useAp
     <>
       <div className="space-y-2">
         <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Character Set</label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 gap-2">
           {CHAR_PRESETS.map((preset) => (
             <button
               key={preset.id}
@@ -105,7 +144,7 @@ function BrushSection({ state, dispatch }: { state: ReturnType<typeof useApp>; d
     <>
       <div className="space-y-2">
         <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Brush Type</label>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-4 gap-2">
           {brushes.map((b) => (
             <button
               key={b.type}
@@ -165,7 +204,7 @@ function ColorsSection({ state, dispatch }: { state: ReturnType<typeof useApp>; 
     <>
       <div className="space-y-2">
         <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Color Mode</label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-3 gap-2">
           {modes.map((m) => (
             <button
               key={m.id}
@@ -244,7 +283,7 @@ function ExportSection() {
       </button>
 
       <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Quick Export</label>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 gap-2">
         <button
           onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "txt" }))}
           className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"

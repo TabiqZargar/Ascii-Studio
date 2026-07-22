@@ -49,9 +49,19 @@ export default function ComparisonSlider({ asciiOutput, colorGrid }: Props) {
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 overflow-hidden select-none"
+      className="absolute inset-0 overflow-hidden select-none touch-none"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onTouchMove={(e) => {
+        if (!dragging || !containerRef.current) return;
+        const touch = e.touches[0];
+        const rect = containerRef.current.getBoundingClientRect();
+        const pct = ((touch.clientX - rect.left) / rect.width) * 100;
+        const clamped = Math.max(2, Math.min(98, pct));
+        if (dragTarget === 1) setPos1(Math.min(clamped, pos2 - 2));
+        else setPos2(Math.max(clamped, pos1 + 2));
+      }}
+      onTouchEnd={() => setDragging(false)}
     >
       <div className="absolute inset-0 overflow-hidden">
         <img src={state.imageUrl} alt="Original" className="h-full w-full object-contain" draggable={false} />
@@ -102,17 +112,29 @@ export default function ComparisonSlider({ asciiOutput, colorGrid }: Props) {
       </div>
 
       <div
-        className="absolute top-0 bottom-0 z-10 w-1 cursor-ew-resize bg-emerald-500"
+        className="absolute top-0 bottom-0 z-10 w-1 cursor-ew-resize bg-emerald-500 touch-none"
         style={{ left: `${pos1}%` }}
         onMouseDown={handleMouseDown(1)}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragging(true);
+          setDragTarget(1);
+        }}
       >
         <div className="absolute -left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white">1</div>
       </div>
 
       <div
-        className="absolute top-0 bottom-0 z-10 w-1 cursor-ew-resize bg-emerald-400"
+        className="absolute top-0 bottom-0 z-10 w-1 cursor-ew-resize bg-emerald-400 touch-none"
         style={{ left: `${pos2}%` }}
         onMouseDown={handleMouseDown(2)}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragging(true);
+          setDragTarget(2);
+        }}
       >
         <div className="absolute -left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-400 text-[10px] text-white">2</div>
       </div>

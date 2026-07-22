@@ -75,7 +75,7 @@ export default function Upload() {
   };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-lg">
+    <div className="flex flex-col items-center w-full max-w-lg px-4">
       <div
         onDrop={handleDrop}
         onDragOver={(e) => {
@@ -84,7 +84,7 @@ export default function Upload() {
         }}
         onDragLeave={() => setDragging(false)}
         onClick={() => inputRef.current?.click()}
-        className={`flex min-h-[300px] w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all ${
+        className={`flex min-h-[200px] sm:min-h-[300px] w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 sm:p-8 transition-all ${
           dragging
             ? "border-emerald-500 bg-emerald-500/10"
             : "border-zinc-700 bg-zinc-900/50 hover:border-emerald-500/50 hover:bg-zinc-800/50"
@@ -97,9 +97,9 @@ export default function Upload() {
           onChange={handleChange}
           className="hidden"
         />
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-800/80 text-zinc-400">
+        <div className="mb-3 sm:mb-4 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-zinc-800/80 text-zinc-400">
           <svg
-            className="h-8 w-8"
+            className="h-6 w-6 sm:h-8 sm:w-8"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -125,21 +125,21 @@ export default function Upload() {
         )}
       </div>
 
-      <div className="mt-6 w-full">
-        <p className="mb-3 text-center text-xs text-zinc-500">
+      <div className="mt-4 sm:mt-6 w-full">
+        <p className="mb-2 sm:mb-3 text-center text-xs text-zinc-500">
           Or try a sample
         </p>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {SAMPLE_IMAGES.map((sample) => (
             <button
               key={sample.id}
               onClick={() => handleSample(sample)}
               className="group flex flex-col items-center rounded-lg bg-zinc-900/50 p-2 transition-all hover:bg-zinc-800/80"
             >
-              <div className="mb-1 flex h-12 w-12 items-center justify-center rounded-lg bg-zinc-800/80 text-xl">
+              <div className="mb-1 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-zinc-800/80 text-xl">
                 {sample.icon}
               </div>
-              <span className="text-[10px] text-zinc-500 group-hover:text-zinc-300">
+              <span className="text-[9px] sm:text-[10px] text-zinc-500 group-hover:text-zinc-300">
                 {sample.name}
               </span>
             </button>

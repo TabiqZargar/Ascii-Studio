@@ -111,10 +111,31 @@ const AsciiCanvas = forwardRef<HTMLDivElement, Props>(function AsciiCanvas({ asc
     [state.panX, state.panY]
   );
 
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length === 2) {
+        setIsPanning(true);
+        const touch = e.touches[0];
+        setPanStart({ x: touch.clientX - state.panX, y: touch.clientY - state.panY });
+      }
+    },
+    [state.panX, state.panY]
+  );
+
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (isPanning) {
         dispatch({ type: "SET_PAN", x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+      }
+    },
+    [isPanning, panStart, dispatch]
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (isPanning && e.touches.length === 2) {
+        const touch = e.touches[0];
+        dispatch({ type: "SET_PAN", x: touch.clientX - panStart.x, y: touch.clientY - panStart.y });
       }
     },
     [isPanning, panStart, dispatch]
@@ -195,12 +216,15 @@ const AsciiCanvas = forwardRef<HTMLDivElement, Props>(function AsciiCanvas({ asc
   return (
     <div
       ref={setRefs}
-      className="absolute inset-0 overflow-hidden checkerboard"
+      className="absolute inset-0 overflow-hidden checkerboard touch-none"
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={() => setIsPanning(false)}
     >
       <div
         className="absolute inset-0 flex items-center justify-center"

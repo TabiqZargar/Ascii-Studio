@@ -138,11 +138,11 @@ export default function ExportDialog({
   const showFontSize = format !== "clipboard-text";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative z-10 w-full max-w-xl rounded-2xl bg-surface/95 backdrop-blur-xl border border-outline-variant/20 shadow-[0_30px_80px_rgba(0,0,0,0.7)] overflow-hidden animate-fadeIn">
-        <div className="flex items-center justify-between px-6 pt-5 pb-3">
+        <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
           <div>
             <h2 className="text-base font-semibold text-on-surface">Export</h2>
             <p className="text-[11px] text-on-surface-variant uppercase tracking-widest mt-0.5">Configure &amp; Download</p>
@@ -152,8 +152,8 @@ export default function ExportDialog({
           </button>
         </div>
 
-        <div className="flex gap-0 h-[440px]">
-          <div className="w-[55%] px-6 py-4 space-y-5 overflow-y-auto">
+        <div className="flex flex-col sm:flex-row gap-0 h-auto sm:h-[440px] max-h-[80vh]">
+          <div className="w-full sm:w-[55%] px-4 sm:px-6 py-4 space-y-4 sm:space-y-5 overflow-y-auto">
             <FormatSelector format={format} onChange={setFormat} />
             {showScale && <ScaleSelector scale={scale} onChange={setScale} />}
             {showFontSize && <FontSizeSlider fontSize={fontSize} onChange={setFontSize} />}
@@ -166,7 +166,7 @@ export default function ExportDialog({
             <PaddingSlider padding={padding} onChange={setPadding} />
           </div>
 
-          <div className="w-[45%] flex flex-col border-l border-outline-variant/10">
+          <div className="w-full sm:w-[45%] flex flex-col border-t sm:border-t-0 sm:border-l border-outline-variant/10">
             <div className="px-4 pt-3 pb-2">
               <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Preview</label>
             </div>
@@ -176,14 +176,14 @@ export default function ExportDialog({
           </div>
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-outline-variant/10 bg-surface-container-low/30">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-t border-outline-variant/10 bg-surface-container-low/30">
           <span className="text-[11px] text-on-surface-variant">
             {asciiData.split("\n").length} lines &middot; {asciiData.replace(/\n/g, "").length.toLocaleString()} chars
           </span>
           <button
             onClick={handleExport}
             disabled={loading}
-            className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary hover:bg-primary-container transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-medium text-on-primary hover:bg-primary-container transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
@@ -213,19 +213,19 @@ function FormatSelector({ format, onChange }: { format: ExportFormat; onChange: 
   return (
     <div className="space-y-2">
       <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Format</label>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-3 sm:grid-cols-3 gap-1.5">
         {EXPORT_PRESETS.map((p) => (
           <button
             key={p.format}
             onClick={() => onChange(p.format)}
-            className={`flex flex-col items-center rounded-lg px-2 py-2.5 transition-all text-center ${
+            className={`flex flex-col items-center rounded-lg px-2 py-2 sm:py-2.5 transition-all text-center ${
               format === p.format
                 ? "bg-primary/15 border border-primary/40 text-primary"
                 : "bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-surface-container-high"
             }`}
           >
-            <span className="material-symbols-outlined text-lg mb-0.5">{p.icon}</span>
-            <span className="text-[10px] font-medium">{p.label}</span>
+            <span className="material-symbols-outlined text-base sm:text-lg mb-0.5">{p.icon}</span>
+            <span className="text-[9px] sm:text-[10px] font-medium">{p.label}</span>
           </button>
         ))}
       </div>
@@ -242,14 +242,14 @@ function ScaleSelector({ scale, onChange }: { scale: 1 | 2 | 4; onChange: (s: 1 
           <button
             key={s.value}
             onClick={() => onChange(s.value)}
-            className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+            className={`flex-1 rounded-lg px-2 sm:px-3 py-2 text-xs font-medium transition-all ${
               scale === s.value
                 ? "bg-primary/15 border border-primary/40 text-primary"
                 : "bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-surface-container-high"
             }`}
           >
             <div>{s.label}</div>
-            <div className="text-[9px] opacity-60">{s.description}</div>
+            <div className="text-[8px] sm:text-[9px] opacity-60">{s.description}</div>
           </button>
         ))}
       </div>

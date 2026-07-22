@@ -108,6 +108,22 @@ body {
 .stagger-3 { animation-delay: 300ms; }
 .stagger-4 { animation-delay: 400ms; }
 
+@keyframes slideUp {
+  0% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.animate-slideUp {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
 .checkerboard {
   background-image: linear-gradient(45deg, #1c1c1f 25%, transparent 25%),
                     linear-gradient(-45deg, #1c1c1f 25%, transparent 25%),
