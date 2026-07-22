@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useApp, useDispatch } from "../../context/AppContext";
 import type { Action } from "../../context/appReducer";
 import { CHAR_PRESETS } from "../../data/presets";
 import type { DockSection } from "./Dock";
+import ExportDialog from "../common/ExportDialog";
 
 interface Props {
   section: DockSection;
@@ -228,30 +230,77 @@ function LayersSection({ state, dispatch }: { state: ReturnType<typeof useApp>; 
 }
 
 function ExportSection() {
-  const formats = [
-    { id: "txt", icon: "description", label: "TXT" },
-    { id: "png", icon: "image", label: "PNG" },
-    { id: "html", icon: "code", label: "HTML" },
-    { id: "clipboard", icon: "content_copy", label: "Copy" },
-    { id: "copy-html", icon: "content_paste", label: "Copy HTML" },
-    { id: "json", icon: "data_object", label: "JSON" },
-  ];
+  const state = useApp();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
-    <div className="space-y-2">
-      <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Export Format</label>
+    <div className="space-y-3">
+      <button
+        onClick={() => setDialogOpen(true)}
+        className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary/15 border border-primary/40 px-4 py-3 text-sm font-medium text-primary hover:bg-primary/25 transition-all active:scale-[0.98]"
+      >
+        <span className="material-symbols-outlined text-lg">tune</span>
+        Full Export Settings
+      </button>
+
+      <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Quick Export</label>
       <div className="grid grid-cols-2 gap-2">
-        {formats.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: f.id }))}
-            className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
-          >
-            <span className="material-symbols-outlined text-base">{f.icon}</span>
-            <span>{f.label}</span>
-          </button>
-        ))}
+        <button
+          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "txt" }))}
+          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
+        >
+          <span className="material-symbols-outlined text-base">description</span>
+          <span>TXT</span>
+        </button>
+        <button
+          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "png" }))}
+          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
+        >
+          <span className="material-symbols-outlined text-base">image</span>
+          <span>PNG</span>
+        </button>
+        <button
+          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "html" }))}
+          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
+        >
+          <span className="material-symbols-outlined text-base">code</span>
+          <span>HTML</span>
+        </button>
+        <button
+          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "clipboard" }))}
+          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
+        >
+          <span className="material-symbols-outlined text-base">content_copy</span>
+          <span>Copy</span>
+        </button>
+        <button
+          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "copy-html" }))}
+          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
+        >
+          <span className="material-symbols-outlined text-base">content_paste</span>
+          <span>Copy HTML</span>
+        </button>
+        <button
+          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "json" }))}
+          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
+        >
+          <span className="material-symbols-outlined text-base">data_object</span>
+          <span>JSON</span>
+        </button>
       </div>
+
+      {dialogOpen && (
+        <ExportDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          asciiData={state.asciiOutput}
+          colorGrid={state.colorGrid}
+          colorMode={state.colorMode}
+          monoColor={state.monoColor}
+          lineHeight={state.canvas.lineHeight}
+          letterSpacing={state.canvas.letterSpacing}
+        />
+      )}
     </div>
   );
 }
