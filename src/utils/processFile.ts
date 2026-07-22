@@ -2,7 +2,7 @@ import type { Action } from "../context/appReducer";
 import { loadImageToCanvas, downscaleImage, downscaleForDisplay, analyzeImage } from "./image";
 import { decodeGif } from "./gifDecoder";
 import { isAnimatedWebP, decodeAnimatedWebP } from "./webpDecoder";
-import { logProfile, type PipelineProfile } from "./gifProfile";
+import { logProfile } from "./gifProfile";
 
 const TARGET_FPS = 12;
 

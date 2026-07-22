@@ -306,14 +306,7 @@ export async function decodeAnimatedWebP(
     });
   }
 
-  // Debug: verify frames are visually different
-  if (resultFrames.length > 1) {
-    const sums = resultFrames.slice(0, 5).map((f, i) => {
-      let s = 0;
-      for (let j = 0; j < f.imageData.data.length; j += 200) s += f.imageData.data[j];
-      return { frame: i, pixelSum: s, w: f.imageData.width, h: f.imageData.height };
-    });
-  }
+
 
   return {
     width: outW,

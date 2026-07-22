@@ -20,15 +20,15 @@ export function useDebounce<T extends (...args: unknown[]) => void>(
     }
   }, []);
 
-  const debounced = useCallback(
+  const debouncedFn = useCallback(
     (...args: unknown[]) => {
       cancel();
       timerRef.current = setTimeout(() => fnRef.current(...args), ms);
     },
     [ms, cancel]
-  ) as DebouncedFn<T>;
+  );
 
-  debounced.cancel = cancel;
+  const debounced = Object.assign(debouncedFn, { cancel }) as DebouncedFn<T>;
 
   useEffect(() => {
     return cancel;

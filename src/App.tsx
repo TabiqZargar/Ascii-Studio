@@ -56,7 +56,6 @@ export default function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
   const processQueueRef = useRef<() => void>(() => {});
-  let tickCounter = 0;
 
   const [screen, setScreen] = useState<"landing" | "workspace">(
     state.imageUrl ? "workspace" : "landing"
