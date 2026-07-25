@@ -20,7 +20,7 @@ export default function Timeline() {
   };
 
   return (
-    <nav className="fixed bottom-14 md:bottom-3 left-0 md:left-20 right-0 md:right-3 z-40 flex items-center px-3 md:px-6 rounded-none md:rounded-xl h-16 md:h-24 bg-surface/80 md:bg-surface/60 backdrop-blur-xl border-t md:border border-outline-variant/20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] md:shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+    <nav className="fixed bottom-14 md:bottom-3 left-0 md:left-20 right-0 md:right-3 z-40 flex items-center px-3 md:px-6 rounded-none md:rounded-xl h-16 md:h-24 bg-surface/80 md:bg-surface/60 backdrop-blur-xl border-t md:border border-outline-variant/20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] md:shadow-[0_20px_50px_rgba(0,0,0,0.5)]" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       <div className="flex items-center gap-3 md:gap-8 w-full">
         <div className="flex items-center gap-2 md:gap-4 shrink-0">
           <button

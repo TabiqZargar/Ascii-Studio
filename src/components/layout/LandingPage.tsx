@@ -33,9 +33,9 @@ export default function LandingPage({ onEnterWorkspace }: Props) {
 
   return (
     <section className="relative z-10 w-full h-screen overflow-y-auto flex flex-col items-center py-16 sm:py-24 min-h-screen transition-all duration-700">
-      <div className="flex flex-col items-center text-center max-w-4xl px-4 sm:px-6 mt-12 sm:mt-24">
-        <div className="ascii-logo mb-4 sm:mb-6 select-none font-mono text-[2.5rem] sm:text-[4rem] md:text-[6rem] leading-none text-primary">
-          <pre className="text-center">{`  ____  ____  ____
+      <div className="flex flex-col items-center text-center max-w-4xl px-4 sm:px-6 mt-12 sm:mt-24 w-full">
+        <div className="ascii-logo mb-4 sm:mb-6 select-none font-mono text-[1.8rem] sm:text-[4rem] md:text-[6rem] leading-none text-primary overflow-hidden">
+          <pre className="text-center whitespace-nowrap">{`  ____  ____  ____
  /  _/ /  _/ /  _/
 _/ /  _/ /  _/ /
 /___/ /___/ /___/ `}</pre>

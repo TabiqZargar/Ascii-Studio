@@ -139,9 +139,9 @@ export default function ComparisonSlider({ asciiOutput, colorGrid }: Props) {
         <div className="absolute -left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-400 text-[10px] text-white">2</div>
       </div>
 
-      <div className="absolute left-3 top-3 z-20 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm">Original</div>
-      <div className="absolute top-3 z-20 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm" style={{ left: `${(pos1 + pos2) / 2}%`, transform: "translateX(-50%)" }}>Processed</div>
-      <div className="absolute right-3 top-3 z-20 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm">ASCII</div>
+      <div className="absolute left-3 top-3 z-20 rounded-md bg-zinc-900/80 px-2 py-1 text-[10px] sm:text-xs text-zinc-400 backdrop-blur-sm">Original</div>
+      <div className="absolute top-3 z-20 rounded-md bg-zinc-900/80 px-2 py-1 text-[10px] sm:text-xs text-zinc-400 backdrop-blur-sm hidden sm:block" style={{ left: `${(pos1 + pos2) / 2}%`, transform: "translateX(-50%)" }}>Processed</div>
+      <div className="absolute right-3 top-3 z-20 rounded-md bg-zinc-900/80 px-2 py-1 text-[10px] sm:text-xs text-zinc-400 backdrop-blur-sm">ASCII</div>
     </div>
   );
 }

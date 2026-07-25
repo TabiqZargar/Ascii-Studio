@@ -40,7 +40,7 @@ export default function Dock({ activeSection, onSectionChange, mobileInspectorOp
   return (
     <>
       {/* Desktop: Side panel */}
-      <aside className="hidden md:flex fixed left-0 top-16 bottom-16 z-40 flex-col items-center py-4 rounded-xl my-12 ml-12 w-20 hover:w-64 transition-all duration-500 overflow-hidden bg-surface-container/60 backdrop-blur-xl border border-primary/15 shadow-2xl group animate-float stagger-2">
+      <aside className="hidden md:flex fixed left-0 top-16 bottom-16 z-40 flex-col items-center py-4 rounded-xl my-12 ml-12 w-20 hover:w-64 transition-all duration-500 overflow-hidden bg-surface-container/60 backdrop-blur-xl border border-primary/15 shadow-2xl group">
         <div className="mb-8 text-primary font-bold flex items-center justify-center">
           <span className="material-symbols-outlined text-4xl">terminal</span>
         </div>
@@ -100,7 +100,7 @@ export default function Dock({ activeSection, onSectionChange, mobileInspectorOp
       </aside>
 
       {/* Mobile: Bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around h-14 bg-surface-container/80 backdrop-blur-xl border-t border-primary/15 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around h-14 bg-surface-container/80 backdrop-blur-xl border-t border-primary/15 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
         {dockItems.map((item) => (
           <button
             key={item.id}

@@ -27,7 +27,7 @@ export default function Inspector({ section, mobileOpen, onCloseMobile }: Props)
   return (
     <>
       {/* Desktop: Right sidebar */}
-      <aside className="hidden md:flex fixed right-3 top-[100px] z-40 flex-col p-4 rounded-xl w-80 max-h-[calc(100vh-200px)] bg-surface/60 backdrop-blur-xl border border-outline-variant/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden animate-float stagger-3">
+      <aside className="hidden md:flex fixed right-3 top-[100px] z-40 flex-col p-4 rounded-xl w-80 max-h-[calc(100vh-200px)] bg-surface/60 backdrop-blur-xl border border-outline-variant/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
         <InspectorHeader sectionTitle={sectionTitle} />
         <div className="space-y-6 overflow-y-auto pr-2 flex-1 min-h-0">
           {section === "characters" && <CharactersSection state={state} dispatch={dispatch} />}
@@ -56,7 +56,7 @@ export default function Inspector({ section, mobileOpen, onCloseMobile }: Props)
               <h3 className="text-sm font-medium text-secondary">{sectionTitle}</h3>
               <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Properties</p>
             </div>
-            <div className="space-y-6 overflow-y-auto px-4 pb-6 flex-1 min-h-0">
+            <div className="space-y-6 overflow-y-auto px-4 pb-6 flex-1 min-h-0" style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}>
               {section === "characters" && <CharactersSection state={state} dispatch={dispatch} />}
               {section === "brush" && <BrushSection state={state} dispatch={dispatch} />}
               {section === "colors" && <ColorsSection state={state} dispatch={dispatch} />}

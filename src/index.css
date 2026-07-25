@@ -191,3 +191,18 @@ input[type="range"]::-moz-range-thumb {
 button {
   transition: background-color 0.15s, color 0.15s, opacity 0.15s, transform 0.1s;
 }
+
+@media (max-width: 767px) {
+  .touch-pan-x {
+    touch-action: pan-x;
+  }
+  .touch-pan-y {
+    touch-action: pan-y;
+  }
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  .touch-none {
+    touch-action: none;
+  }
+}

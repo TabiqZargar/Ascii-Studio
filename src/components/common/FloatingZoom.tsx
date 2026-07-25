@@ -26,7 +26,7 @@ export default function FloatingZoom({ containerRef }: Props) {
   };
 
   return (
-    <div className="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-2 p-1 glass-panel rounded-full shadow-2xl z-30">
+    <div className="absolute bottom-16 sm:bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-2 p-1 glass-panel rounded-full shadow-2xl z-30">
       <button onClick={zoomIn} className="p-1.5 sm:p-2 hover:bg-white/5 rounded-full text-on-surface-variant transition-colors">
         <span className="material-symbols-outlined text-[20px] sm:text-[24px]">zoom_in</span>
       </button>

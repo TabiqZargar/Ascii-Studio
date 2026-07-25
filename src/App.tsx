@@ -352,7 +352,7 @@ export default function App() {
   const isAnimating = state.animation.rawFrames.length > 0;
 
   const mainPadding = isMobile
-    ? { paddingLeft: 0, paddingRight: 0, paddingTop: 60, paddingBottom: isAnimating ? 130 : 120 }
+    ? { paddingLeft: 0, paddingRight: 0, paddingTop: 56, paddingBottom: 168 }
     : { paddingLeft: 80, paddingRight: 332, paddingTop: 80, paddingBottom: isAnimating ? 120 : 52 };
 
   return (
@@ -421,7 +421,7 @@ export default function App() {
               {isAnimating && <Timeline />}
 
               {!state.fullscreen && state.imageUrl && !isAnimating && (
-                <div className="fixed bottom-14 md:bottom-3 left-0 md:left-20 right-0 md:right-3 z-30 flex items-center gap-3 rounded-none md:rounded-xl bg-surface/80 md:bg-surface/60 backdrop-blur-xl border-t md:border border-outline-variant/20 px-3 md:px-4 py-2">
+                <div className="fixed bottom-14 md:bottom-3 left-0 md:left-20 right-0 md:right-3 z-30 flex items-center gap-3 rounded-none md:rounded-xl bg-surface/80 md:bg-surface/60 backdrop-blur-xl border-t md:border border-outline-variant/20 px-3 md:px-4 py-2" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
                   <Histogram imageData={state.imageData} />
                 </div>
               )}

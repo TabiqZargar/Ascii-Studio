@@ -6,7 +6,7 @@ export default function Navbar() {
   const dispatch = useDispatch();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 sm:px-6 h-14 sm:h-16 rounded-xl mt-2 sm:mt-4 mx-2 sm:mx-12 bg-surface-container/60 backdrop-blur-xl border border-primary/15 shadow-2xl animate-float">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 sm:px-6 h-14 sm:h-16 rounded-none sm:rounded-xl mt-0 sm:mt-4 mx-0 sm:mx-12 bg-surface-container/60 backdrop-blur-xl border-0 sm:border border-primary/15 shadow-2xl" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
       <div className="flex items-center gap-3">
         <div className="font-headline text-lg sm:text-2xl font-extrabold text-primary tracking-tighter">ASCII Studio</div>
       </div>
