@@ -51,7 +51,7 @@ export default function Dock({ activeSection, onSectionChange, mobileInspectorOp
               onClick={() => handleClick(item.id)}
               className={`w-full flex items-center gap-4 p-3 rounded-lg transition-all active:scale-95 ${
                 activeSection === item.id
-                  ? "bg-primary text-on-primary shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                  ? "bg-primary text-on-primary shadow-[0_0_15px_rgba(255,42,252,0.4)]"
                   : "text-on-surface-variant hover:bg-primary/20 hover:text-primary neon-glow"
               }`}
             >
@@ -70,7 +70,7 @@ export default function Dock({ activeSection, onSectionChange, mobileInspectorOp
               onClick={() => handleClick(item.id)}
               className={`w-full flex items-center gap-4 p-3 rounded-lg transition-all active:scale-95 ${
                 activeSection === item.id
-                  ? "bg-primary text-on-primary shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                  ? "bg-primary text-on-primary shadow-[0_0_15px_rgba(255,42,252,0.4)]"
                   : "text-on-surface-variant hover:bg-primary/20 hover:text-primary neon-glow"
               }`}
             >

@@ -55,7 +55,7 @@ _/ /  _/ /  _/ /
           onChange={onChange}
         />
         <div
-          className="group relative w-full max-w-xl h-48 sm:h-64 glass-panel rounded-xl flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all duration-500 hover:shadow-[0_0_80px_rgba(16,185,129,0.15)]"
+          className="group relative w-full max-w-xl h-48 sm:h-64 glass-panel rounded-xl flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all duration-500 hover:shadow-[0_0_80px_rgba(255,42,252,0.15)]"
           onClick={() => inputRef.current?.click()}
           onDrop={onDrop}
           onDragOver={(e) => e.preventDefault()}
