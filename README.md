@@ -117,6 +117,62 @@ All application state lives in a single `useReducer` with `React.createContext`.
 - **Desktop (≥768px):** Fixed navbar top, sidebar dock left, inspector right, floating zoom bottom-center, timeline bottom
 - **Mobile (<768px):** Fixed navbar top, bottom tab bar for dock, bottom-sheet inspector, compact timeline above tab bar, edge-to-edge canvas
 
+## Animation Pipeline
+
+### How It Works
+
+```
+Upload GIF/WebP
+  → Decoder extracts raw ImageData[] frames (~12 FPS sampled)
+  → INIT_ANIMATION sets rawFrames, playing=true
+  → processQueue() feeds one frame at a time to Web Worker
+  → Worker converts pixel data → ASCII characters + color grid
+  → CACHE_FRAME stores result in frameCache[]
+  → setInterval timer reads frameCache[currentFrame] and renders
+```
+
+**Key components:**
+- `processQueue()` — serial queue, one frame at a time through a single Web Worker
+- `frameCache[]` — sparse array of converted ASCII frames (indexed by frame number)
+- `preBufferCount` — keeps 5 frames ahead of the playhead cached
+- `generationRef` — invalidates in-flight work when settings change
+- `animFrameRef` — tracks the current frame index for the interval timer
+
+### Known Issues
+
+| # | Issue | Impact | Severity |
+|---|---|---|---|
+| 1 | `tickCounter` dead code | Unused variable, no runtime effect | Low |
+| 2 | Single-worker bottleneck | Frames convert one at a time; large GIFs take seconds to fill cache | Medium |
+| 3 | Stale `animFrameRef` reads in timer | Playhead can lag behind actual state by one or more ticks | Medium |
+| 4 | `cachedCount` recalculated O(n) every cache event | 500-frame GIF scans entire array on each frame cached | Low |
+| 5 | `SET_CURRENT_FRAME` silent miss | Playhead advances but canvas doesn't update if frame isn't cached yet — visible stutter | High |
+| 6 | Timer cleanup race in Strict Mode | Interval created → immediately cleaned → recreated; can cause double-fire on mount | Medium |
+| 7 | Settings change discards entire cache | Changing charset/brightness/contrast calls `INIT_ANIMATION` again, resetting `frameCache` to `[]` — all previously cached frames are lost | High |
+| 8 | `convertFrame` overwrites `pendingRef` without guard | If `processQueue` ran twice (stale closure window), first worker callback is orphaned | Medium |
+| 9 | No backpressure on queue | `queueRef.current.push()` dedup is O(n) linear scan per frame; slow with 100+ queued frames | Low |
+| 10 | `processQueue` recreated every render | `processQueueRef.current` reassigned frequently; `useEffect` may fire with stale reference | Medium |
+
+### Pipeline Flow Diagram
+
+```
+┌─────────────┐     ┌────────────┐     ┌─────────────┐
+│  rawFrames  │────▶│ processQueue│────▶│ Web Worker  │
+│  (ImageData)│     │  (serial)   │     │ (convert)   │
+└─────────────┘     └────────────┘     └──────┬──────┘
+                                              │
+                                              ▼
+┌─────────────┐     ┌────────────┐     ┌─────────────┐
+│  AsciiCanvas│◀────│ SET_CURRENT│◀────│ frameCache  │
+│  (render)   │     │  _FRAME    │     │ [ASCII frame]│
+└─────────────┘     └────────────┘     └─────────────┘
+        ▲                                      ▲
+        │            ┌────────────┐            │
+        └────────────│  interval  │────────────┘
+                     │  (timer)   │
+                     └────────────┘
+```
+
 ## Keyboard Shortcuts
 
 | Key | Action |
