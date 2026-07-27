@@ -1,56 +1,63 @@
 import { useApp, useDispatch } from "../../context/AppContext";
-import { STYLE_PRESETS } from "../../data/presets";
 
 export default function Navbar() {
   const state = useApp();
   const dispatch = useDispatch();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 sm:px-6 h-14 sm:h-16 rounded-none sm:rounded-xl mt-0 sm:mt-4 mx-0 sm:mx-12 bg-surface-container/60 backdrop-blur-xl border-0 sm:border border-primary/15 shadow-2xl" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+    <header
+      className="fixed top-4 left-4 right-4 rounded-lg bg-surface flex justify-between items-center px-4 py-2 z-50 border border-primary"
+      style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top, 0px))" }}
+    >
+      <div className="flex items-center gap-6">
+        <h1 className="font-headline text-lg sm:text-xl text-primary uppercase tracking-tighter">
+          ASCII.STUDIO
+        </h1>
+        <nav className="hidden md:flex items-center gap-4">
+          {[
+            { id: "upload", label: "Gallery" },
+            { id: "characters", label: "Presets" },
+            { id: "layers", label: "Layers" },
+            { id: "export", label: "Export" },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                dispatch({ type: "SET_COLOR_MODE", mode: state.colorMode });
+              }}
+              className="font-label-caps text-[11px] text-on-surface-variant hover:text-primary transition-all tracking-wider"
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
       <div className="flex items-center gap-3">
-        <div className="font-headline text-lg sm:text-2xl font-extrabold text-primary tracking-tighter">ASCII Studio</div>
-      </div>
-
-      <div className="hidden lg:flex items-center gap-8">
-        {STYLE_PRESETS.slice(0, 6).map((p) => (
-          <button
-            key={p.id}
-            onClick={() => dispatch({ type: "SET_STYLE_PRESET", presetId: p.id })}
-            className={`text-sm font-medium transition-colors ${
-              state.charPresetId === p.charPresetId && state.colorMode === p.colorMode
-                ? "text-primary border-b-2 border-primary pb-1"
-                : "text-on-surface-variant hover:text-primary"
-            }`}
-          >
-            {p.name}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-1 sm:gap-2">
         <button
           onClick={() => dispatch({ type: "TOGGLE_COMPARISON" })}
-          className={`p-2 rounded-full transition-all duration-300 neon-glow ${
-            state.comparisonMode ? "bg-primary/20 text-primary" : "text-on-surface-variant hover:bg-primary/10"
+          className={`bg-primary-container text-on-primary-container px-4 py-1.5 rounded-sm font-label-caps text-[11px] uppercase tracking-widest active:translate-y-0.5 transition-all button-riso-offset ${
+            state.comparisonMode ? "ring-1 ring-primary" : ""
           }`}
-          title="Compare"
         >
-          <span className="material-symbols-outlined text-[20px] sm:text-[24px]">compare</span>
+          Mint Art
         </button>
-        <button
-          onClick={() => dispatch({ type: "TOGGLE_FULLSCREEN" })}
-          className="p-2 text-on-surface-variant hover:bg-primary/10 rounded-full transition-all duration-300 neon-glow"
-          title="Fullscreen"
-        >
-          <span className="material-symbols-outlined text-[20px] sm:text-[24px]">fullscreen</span>
-        </button>
-        <button
-          className="p-2 text-on-surface-variant hover:bg-primary/10 rounded-full transition-all duration-300 neon-glow hidden sm:block"
-          title="Settings"
-        >
-          <span className="material-symbols-outlined text-[20px] sm:text-[24px]">settings</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="text-primary cursor-pointer hover:opacity-80 transition-opacity"
+            title="Settings"
+          >
+            <span className="material-symbols-outlined text-xl">settings</span>
+          </button>
+          <button
+            className="text-primary cursor-pointer hover:opacity-80 transition-opacity"
+            title="Fullscreen"
+            onClick={() => dispatch({ type: "TOGGLE_FULLSCREEN" })}
+          >
+            <span className="material-symbols-outlined text-xl">fullscreen</span>
+          </button>
+        </div>
       </div>
-    </nav>
+    </header>
   );
 }

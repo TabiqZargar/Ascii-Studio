@@ -17,19 +17,27 @@ export default function Inspector({ section, mobileOpen, onCloseMobile }: Props)
 
   const sectionTitle = {
     upload: "Upload",
-    brush: "Brush",
-    characters: "Characters",
-    colors: "Colors",
+    brush: "Draw",
+    characters: "Type",
+    colors: "Palette",
     layers: "Layers",
     export: "Export",
   }[section];
 
   return (
     <>
-      {/* Desktop: Right sidebar */}
-      <aside className="hidden md:flex fixed right-3 top-[100px] z-40 flex-col p-4 rounded-xl w-80 max-h-[calc(100vh-200px)] bg-surface/60 backdrop-blur-xl border border-outline-variant/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
-        <InspectorHeader sectionTitle={sectionTitle} />
-        <div className="space-y-6 overflow-y-auto pr-2 flex-1 min-h-0">
+      {/* Desktop: Right properties panel */}
+      <aside className="hidden xl:flex fixed right-4 top-24 bottom-24 w-64 rounded-lg bg-surface border border-tertiary flex-col p-4 z-40 floating-panel overflow-y-auto">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-tertiary flex items-center justify-center text-on-tertiary rounded-sm">
+            <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+          </div>
+          <div>
+            <p className="font-label-caps text-[12px] text-tertiary tracking-wider">PROPERTIES</p>
+            <p className="font-label-caps text-[8px] text-on-surface-variant opacity-60 tracking-wider">ASCII_LAYER_01</p>
+          </div>
+        </div>
+        <div className="space-y-4 flex-1">
           {section === "characters" && <CharactersSection state={state} dispatch={dispatch} />}
           {section === "brush" && <BrushSection state={state} dispatch={dispatch} />}
           {section === "colors" && <ColorsSection state={state} dispatch={dispatch} />}
@@ -37,26 +45,39 @@ export default function Inspector({ section, mobileOpen, onCloseMobile }: Props)
           {section === "export" && <ExportSection />}
           {section === "upload" && <UploadSection state={state} dispatch={dispatch} />}
         </div>
+
+        <div className="mt-auto pt-4 space-y-3 border-t border-outline-variant/30">
+          <div className="flex items-center gap-2 text-on-surface-variant hover:text-tertiary transition-colors cursor-pointer">
+            <span className="material-symbols-outlined text-sm">slow_motion_video</span>
+            <span className="font-label-caps text-[10px] tracking-wider">MOTION</span>
+          </div>
+          <div className="flex items-center gap-2 text-on-surface-variant hover:text-tertiary transition-colors cursor-pointer">
+            <span className="material-symbols-outlined text-sm">auto_awesome</span>
+            <span className="font-label-caps text-[10px] tracking-wider">POST-FX</span>
+          </div>
+          <div className="flex items-center gap-2 text-on-surface-variant hover:text-tertiary transition-colors cursor-pointer">
+            <span className="material-symbols-outlined text-sm">history</span>
+            <span className="font-label-caps text-[10px] tracking-wider">HISTORY</span>
+          </div>
+        </div>
       </aside>
 
       {/* Mobile: Bottom sheet */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="xl:hidden fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" onClick={onCloseMobile} />
-          <div className="relative z-10 max-h-[70vh] rounded-t-2xl bg-surface/95 backdrop-blur-xl border-t border-primary/15 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-slideUp">
-            <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-outline-variant/10">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-1 rounded-full bg-on-surface-variant/30 mx-auto" />
-              </div>
-              <button onClick={onCloseMobile} className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors">
+          <div className="relative z-10 max-h-[70vh] rounded-t-2xl bg-surface border-t border-tertiary flex flex-col overflow-hidden animate-slideUp">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-outline-variant/30">
+              <div className="w-8 h-1 rounded-full bg-on-surface-variant/30 mx-auto" />
+              <button onClick={onCloseMobile} className="absolute right-4 p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors">
                 <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
-            <div className="px-4 pt-2 pb-1">
-              <h3 className="text-sm font-medium text-secondary">{sectionTitle}</h3>
-              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Properties</p>
+            <div className="px-4 pt-3 pb-2">
+              <h3 className="text-sm font-medium text-secondary font-label-caps tracking-wider">{sectionTitle}</h3>
+              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-label-caps">Properties</p>
             </div>
-            <div className="space-y-6 overflow-y-auto px-4 pb-6 flex-1 min-h-0" style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}>
+            <div className="space-y-4 overflow-y-auto px-4 pb-6 flex-1 min-h-0" style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}>
               {section === "characters" && <CharactersSection state={state} dispatch={dispatch} />}
               {section === "brush" && <BrushSection state={state} dispatch={dispatch} />}
               {section === "colors" && <ColorsSection state={state} dispatch={dispatch} />}
@@ -71,109 +92,139 @@ export default function Inspector({ section, mobileOpen, onCloseMobile }: Props)
   );
 }
 
-function InspectorHeader({ sectionTitle }: { sectionTitle: string }) {
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <div>
-        <h3 className="text-sm font-medium text-secondary">{sectionTitle}</h3>
-        <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Properties</p>
-      </div>
-      <div className="flex gap-2">
-        <button className="text-secondary p-1 rounded">
-          <span className="material-symbols-outlined text-sm">tune</span>
-        </button>
-        <button className="text-on-surface-variant hover:bg-secondary/10 p-1 rounded">
-          <span className="material-symbols-outlined text-sm">settings</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function CharactersSection({ state, dispatch }: { state: ReturnType<typeof useApp>; dispatch: React.Dispatch<Action> }) {
   return (
     <>
-      <div className="space-y-2">
-        <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Character Set</label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 gap-2">
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Engine Settings</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2 bg-surface-container border border-outline-variant">
+            <label className="font-label-caps text-[9px] text-on-surface-variant block mb-1 tracking-wider">
+              DENSITY
+              <input
+                type="range"
+                min={30}
+                max={250}
+                step={5}
+                value={state.canvas.asciiWidth}
+                onChange={(e) => dispatch({ type: "SET_CANVAS", canvas: { asciiWidth: Number(e.target.value), asciiHeight: Math.round(Number(e.target.value) * 0.5) } })}
+                className="w-full accent-tertiary bg-outline-variant h-1 rounded-full appearance-none mt-1"
+              />
+            </label>
+          </div>
+          <div className="p-2 bg-surface-container border border-outline-variant">
+            <label className="font-label-caps text-[9px] text-on-surface-variant block mb-1 tracking-wider">
+              OFFSET
+              <input
+                type="range"
+                min={0}
+                max={20}
+                step={1}
+                value={state.canvas.letterSpacing}
+                onChange={(e) => dispatch({ type: "SET_CANVAS", canvas: { letterSpacing: Number(e.target.value) } })}
+                className="w-full accent-tertiary bg-outline-variant h-1 rounded-full appearance-none mt-1"
+              />
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Character Sets</h3>
+        <div className="space-y-1">
           {CHAR_PRESETS.map((preset) => (
             <button
               key={preset.id}
               onClick={() => dispatch({ type: "SET_CHAR_PRESET", id: preset.id })}
-              className={`p-2 rounded-lg flex flex-col items-center transition-all ${
+              className={`w-full flex justify-between items-center pl-3 py-1.5 transition-all cursor-pointer ${
                 state.charPresetId === preset.id
-                  ? "bg-primary/10 border border-primary/40 text-primary"
-                  : "glass-panel border-outline-variant/20 hover:border-secondary/50"
+                  ? "text-tertiary font-bold border-l-2 border-tertiary bg-tertiary/10"
+                  : "text-on-surface-variant hover:text-tertiary border-l-2 border-transparent"
               }`}
             >
-              <span className="font-mono text-xl">{preset.preview}</span>
-              <span className="text-[10px] mt-1">{preset.name}</span>
+              <span className="font-label-caps text-[11px] tracking-wider">{preset.name}</span>
+              {state.charPresetId === preset.id && (
+                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+              )}
+            </button>
+          ))}
+          <div className="mt-2">
+            <input
+              type="text"
+              value={state.customChars}
+              onChange={(e) => {
+                dispatch({ type: "SET_CUSTOM_CHARS", chars: e.target.value });
+                dispatch({ type: "SET_CHAR_PRESET", id: "custom" });
+              }}
+              placeholder="Custom chars..."
+              className="w-full rounded-sm border border-outline-variant bg-surface-container px-2 py-1.5 text-xs font-label-caps text-on-surface outline-none focus:border-tertiary transition-colors tracking-wider"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Filters (Post-FX)</h3>
+        <div className="grid grid-cols-2 gap-2">
+          {["BLEED", "STIPPLE", "HALFTONE", "NOISE"].map((f) => (
+            <button key={f} className="bg-surface-container-high p-2 border border-outline-variant text-[10px] font-label-caps text-on-surface-variant hover:border-tertiary hover:text-tertiary tracking-wider">
+              {f}
             </button>
           ))}
         </div>
-      </div>
-      <div className="space-y-2">
-        <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Custom</label>
-        <input
-          type="text"
-          value={state.customChars}
-          onChange={(e) => {
-            dispatch({ type: "SET_CUSTOM_CHARS", chars: e.target.value });
-            dispatch({ type: "SET_CHAR_PRESET", id: "custom" });
-          }}
-          placeholder="Type characters..."
-          className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2 text-sm font-mono text-on-surface outline-none focus:border-primary/50 transition-colors"
-        />
-      </div>
+      </section>
     </>
   );
 }
 
 function BrushSection({ state, dispatch }: { state: ReturnType<typeof useApp>; dispatch: React.Dispatch<Action> }) {
   const brushes: Array<{ type: string; icon: string; label: string }> = [
-    { type: "brush", icon: "brush", label: "Brush" },
-    { type: "rectangle", icon: "rectangle", label: "Rect" },
-    { type: "circle", icon: "circle", label: "Circle" },
-    { type: "line", icon: "pen_size_1", label: "Line" },
-    { type: "fill", icon: "format_color_fill", label: "Fill" },
-    { type: "text", icon: "text_fields", label: "Text" },
-    { type: "eraser", icon: "backspace", label: "Erase" },
+    { type: "brush", icon: "brush", label: "DRAW" },
+    { type: "rectangle", icon: "rectangle", label: "RECT" },
+    { type: "circle", icon: "circle", label: "CIRCLE" },
+    { type: "line", icon: "pen_size_1", label: "LINE" },
+    { type: "fill", icon: "format_color_fill", label: "FILL" },
+    { type: "text", icon: "text_fields", label: "TYPE" },
+    { type: "eraser", icon: "backspace", label: "ERASE" },
   ];
 
   return (
     <>
-      <div className="space-y-2">
-        <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Brush Type</label>
-        <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-4 gap-2">
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Brush Tools</h3>
+        <div className="grid grid-cols-4 gap-2">
           {brushes.map((b) => (
             <button
               key={b.type}
               onClick={() => dispatch({ type: "SET_BRUSH_TYPE", brush: b.type as import("../../types").BrushType })}
-              className={`flex flex-col items-center rounded-lg p-2 transition-all ${
+              className={`flex flex-col items-center rounded-sm p-2 transition-all ${
                 state.brushType === b.type
-                  ? "bg-primary/20 text-primary ring-1 ring-primary/50"
-                  : "bg-surface-container hover:bg-surface-container-high text-on-surface-variant"
+                  ? "bg-secondary text-on-secondary"
+                  : "bg-surface-container text-secondary hover:bg-secondary-container hover:text-on-secondary-container"
               }`}
             >
               <span className="material-symbols-outlined text-lg">{b.icon}</span>
-              <span className="text-[8px] mt-0.5">{b.label}</span>
+              <span className="font-label-caps text-[7px] mt-1 tracking-wider">{b.label}</span>
             </button>
           ))}
         </div>
-      </div>
-      <div className="space-y-2">
-        <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Character</label>
+      </section>
+
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Brush Character</h3>
         <input
           type="text"
           value={state.brushChar}
           onChange={(e) => dispatch({ type: "SET_BRUSH_CHAR", char: e.target.value.slice(-1) || "@" })}
           maxLength={2}
-          className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2 text-center text-sm font-mono text-on-surface outline-none focus:border-primary/50 transition-colors"
+          className="w-full rounded-sm border border-outline-variant bg-surface-container px-2 py-1.5 text-center text-sm font-label-caps text-on-surface outline-none focus:border-tertiary transition-colors tracking-wider"
         />
-      </div>
-      <div className="space-y-2">
-        <div className="flex justify-between text-[11px] text-on-surface-variant font-medium">
-          <span>Size</span>
+      </section>
+
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Brush Size</h3>
+        <div className="flex justify-between text-[11px] text-on-surface-variant font-label-caps mb-1">
+          <span className="tracking-wider">SIZE</span>
           <span>{state.brushSize}</span>
         </div>
         <input
@@ -183,47 +234,48 @@ function BrushSection({ state, dispatch }: { state: ReturnType<typeof useApp>; d
           step={1}
           value={state.brushSize}
           onChange={(e) => dispatch({ type: "SET_BRUSH_SIZE", size: Number(e.target.value) })}
-          className="w-full accent-primary"
+          className="w-full accent-tertiary"
         />
-      </div>
+      </section>
     </>
   );
 }
 
 function ColorsSection({ state, dispatch }: { state: ReturnType<typeof useApp>; dispatch: React.Dispatch<Action> }) {
   const modes = [
-    { id: "mono" as const, name: "Mono", color: state.monoColor },
-    { id: "original" as const, name: "Color", color: "#ffffff" },
-    { id: "matrix" as const, name: "Matrix", color: "#00ff00" },
-    { id: "amber" as const, name: "Amber", color: "#ffaa00" },
-    { id: "cyberpunk" as const, name: "Cyber", color: "#a600ff" },
-    { id: "fire" as const, name: "Fire", color: "#ff6600" },
+    { id: "mono" as const, name: "MONO", color: state.monoColor },
+    { id: "original" as const, name: "COLOR", color: "#ffffff" },
+    { id: "matrix" as const, name: "MATRIX", color: "#00ff00" },
+    { id: "amber" as const, name: "AMBER", color: "#ffaa00" },
+    { id: "cyberpunk" as const, name: "CYBER", color: "#a600ff" },
+    { id: "fire" as const, name: "FIRE", color: "#ff6600" },
   ];
 
   return (
     <>
-      <div className="space-y-2">
-        <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Color Mode</label>
-        <div className="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-3 gap-2">
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Color Mode</h3>
+        <div className="grid grid-cols-3 gap-2">
           {modes.map((m) => (
             <button
               key={m.id}
               onClick={() => dispatch({ type: "SET_COLOR_MODE", mode: m.id })}
-              className={`flex flex-col items-center rounded-lg p-2 transition-all ${
+              className={`flex flex-col items-center rounded-sm p-2 transition-all ${
                 state.colorMode === m.id
-                  ? "ring-1 ring-primary bg-surface-container-high text-primary"
-                  : "bg-surface-container hover:bg-surface-container-high text-on-surface-variant"
+                  ? "bg-tertiary/20 border border-tertiary text-tertiary"
+                  : "bg-surface-container border border-outline-variant text-on-surface-variant hover:border-tertiary hover:text-tertiary"
               }`}
             >
-              <div className="mb-1 h-3 w-full rounded-full" style={{ backgroundColor: m.color, opacity: 0.8 }} />
-              <span className="text-[10px]">{m.name}</span>
+              <div className="mb-1 h-2 w-full rounded-full" style={{ backgroundColor: m.color, opacity: 0.8 }} />
+              <span className="font-label-caps text-[8px] tracking-wider">{m.name}</span>
             </button>
           ))}
         </div>
-      </div>
+      </section>
+
       {state.colorMode === "mono" && (
-        <div className="space-y-2">
-          <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Color</label>
+        <section>
+          <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Mono Color</h3>
           <div className="flex items-center gap-3">
             <input
               type="color"
@@ -231,10 +283,24 @@ function ColorsSection({ state, dispatch }: { state: ReturnType<typeof useApp>; 
               onChange={(e) => dispatch({ type: "SET_MONO_COLOR", color: e.target.value })}
               className="h-8 w-8 cursor-pointer border-0 bg-transparent"
             />
-            <span className="text-sm font-mono text-on-surface-variant">{state.monoColor}</span>
+            <span className="text-sm font-label-caps text-on-surface-variant tracking-wider">{state.monoColor}</span>
           </div>
-        </div>
+        </section>
       )}
+
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Quick Palette</h3>
+        <div className="flex gap-2">
+          {["#ffb4a4", "#f1be75", "#ffb4a6", "#ffffff", "#00ff00", "#ffaa00"].map((c) => (
+            <button
+              key={c}
+              onClick={() => dispatch({ type: "SET_MONO_COLOR", color: c })}
+              className="w-6 h-6 border border-outline-variant cursor-pointer hover:scale-110 transition-transform"
+              style={{ backgroundColor: c }}
+            />
+          ))}
+        </div>
+      </section>
     </>
   );
 }
@@ -242,28 +308,57 @@ function ColorsSection({ state, dispatch }: { state: ReturnType<typeof useApp>; 
 function LayersSection({ state, dispatch }: { state: ReturnType<typeof useApp>; dispatch: React.Dispatch<Action> }) {
   return (
     <>
-      <div className="space-y-2">
-        <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Layers</label>
-        {state.layers.map((layer) => (
-          <div key={layer.id} className={`flex items-center gap-2 rounded-lg px-3 py-2 transition-all ${state.activeLayerId === layer.id ? "bg-surface-container-high" : "bg-surface-container"}`}>
-            <button onClick={() => dispatch({ type: "SET_ACTIVE_LAYER", id: layer.id })} className="flex-1 text-left text-sm text-on-surface">{layer.name}</button>
-            <button onClick={() => dispatch({ type: "TOGGLE_LAYER", id: layer.id })} className={`material-symbols-outlined text-base ${layer.visible ? "text-on-surface-variant" : "text-surface-variant"}`}>
-              {layer.visible ? "visibility" : "visibility_off"}
-            </button>
-            <button onClick={() => dispatch({ type: "LOCK_LAYER", id: layer.id })} className={`material-symbols-outlined text-base ${layer.locked ? "text-error" : "text-on-surface-variant"}`}>
-              {layer.locked ? "lock" : "lock_open"}
-            </button>
-            <button onClick={() => dispatch({ type: "MOVE_LAYER", id: layer.id, direction: "up" })} className="material-symbols-outlined text-base text-on-surface-variant hover:text-on-surface">arrow_upward</button>
-            <button onClick={() => dispatch({ type: "MOVE_LAYER", id: layer.id, direction: "down" })} className="material-symbols-outlined text-base text-on-surface-variant hover:text-on-surface">arrow_downward</button>
-          </div>
-        ))}
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Layers</h3>
+        <div className="space-y-1">
+          {state.layers.map((layer) => (
+            <div
+              key={layer.id}
+              className={`flex items-center gap-2 rounded-sm px-2 py-1.5 transition-all ${
+                state.activeLayerId === layer.id
+                  ? "bg-surface-container-high border border-tertiary/30"
+                  : "bg-surface-container border border-outline-variant/30"
+              }`}
+            >
+              <button
+                onClick={() => dispatch({ type: "SET_ACTIVE_LAYER", id: layer.id })}
+                className="flex-1 text-left text-[11px] font-label-caps text-on-surface tracking-wider"
+              >
+                {layer.name}
+              </button>
+              <button
+                onClick={() => dispatch({ type: "TOGGLE_LAYER", id: layer.id })}
+                className={`material-symbols-outlined text-base ${layer.visible ? "text-on-surface-variant" : "text-surface-variant"}`}
+              >
+                {layer.visible ? "visibility" : "visibility_off"}
+              </button>
+              <button
+                onClick={() => dispatch({ type: "LOCK_LAYER", id: layer.id })}
+                className={`material-symbols-outlined text-base ${layer.locked ? "text-error" : "text-on-surface-variant"}`}
+              >
+                {layer.locked ? "lock" : "lock_open"}
+              </button>
+              <button onClick={() => dispatch({ type: "MOVE_LAYER", id: layer.id, direction: "up" })} className="material-symbols-outlined text-base text-on-surface-variant hover:text-on-surface">arrow_upward</button>
+              <button onClick={() => dispatch({ type: "MOVE_LAYER", id: layer.id, direction: "down" })} className="material-symbols-outlined text-base text-on-surface-variant hover:text-on-surface">arrow_downward</button>
+            </div>
+          ))}
+          <button
+            onClick={() => dispatch({ type: "ADD_LAYER", layer: { id: `layer-${Date.now()}`, type: "text", name: `Layer ${state.layers.length + 1}`, visible: true, locked: false, opacity: 1 } })}
+            className="w-full rounded-sm border border-dashed border-outline-variant px-2 py-1.5 text-[10px] font-label-caps text-on-surface-variant hover:border-tertiary hover:text-tertiary transition-all tracking-wider"
+          >
+            + ADD LAYER
+          </button>
+        </div>
+      </section>
+
+      <section className="pt-3 border-t border-outline-variant/30">
         <button
-          onClick={() => dispatch({ type: "ADD_LAYER", layer: { id: `layer-${Date.now()}`, type: "text", name: `Layer ${state.layers.length + 1}`, visible: true, locked: false, opacity: 1 } })}
-          className="w-full rounded-lg border border-dashed border-outline-variant/20 px-3 py-2 text-sm text-on-surface-variant hover:border-primary/50 hover:text-primary transition-all"
+          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-save"))}
+          className="w-full py-2 border border-tertiary text-tertiary font-label-caps text-[10px] hover:bg-tertiary/10 transition-colors tracking-wider"
         >
-          + Add Layer
+          EXPORT META_DATA
         </button>
-      </div>
+      </section>
     </>
   );
 }
@@ -276,56 +371,31 @@ function ExportSection() {
     <div className="space-y-3">
       <button
         onClick={() => setDialogOpen(true)}
-        className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary/15 border border-primary/40 px-4 py-3 text-sm font-medium text-primary hover:bg-primary/25 transition-all active:scale-[0.98]"
+        className="w-full flex items-center justify-center gap-2 rounded-sm bg-primary-container px-4 py-3 text-sm font-label-caps text-on-primary-container hover:bg-primary/80 transition-all active:scale-[0.98] tracking-wider uppercase"
       >
         <span className="material-symbols-outlined text-lg">tune</span>
-        Full Export Settings
+        FULL EXPORT
       </button>
 
-      <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Quick Export</label>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 gap-2">
-        <button
-          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "txt" }))}
-          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
-        >
-          <span className="material-symbols-outlined text-base">description</span>
-          <span>TXT</span>
-        </button>
-        <button
-          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "png" }))}
-          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
-        >
-          <span className="material-symbols-outlined text-base">image</span>
-          <span>PNG</span>
-        </button>
-        <button
-          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "html" }))}
-          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
-        >
-          <span className="material-symbols-outlined text-base">code</span>
-          <span>HTML</span>
-        </button>
-        <button
-          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "clipboard" }))}
-          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
-        >
-          <span className="material-symbols-outlined text-base">content_copy</span>
-          <span>Copy</span>
-        </button>
-        <button
-          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "copy-html" }))}
-          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
-        >
-          <span className="material-symbols-outlined text-base">content_paste</span>
-          <span>Copy HTML</span>
-        </button>
-        <button
-          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: "json" }))}
-          className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high transition-all"
-        >
-          <span className="material-symbols-outlined text-base">data_object</span>
-          <span>JSON</span>
-        </button>
+      <h3 className="text-tertiary font-label-caps text-[10px] uppercase border-b border-outline-variant pb-1 tracking-wider">Quick Export</h3>
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { format: "txt", icon: "description", label: "TXT" },
+          { format: "png", icon: "image", label: "PNG" },
+          { format: "html", icon: "code", label: "HTML" },
+          { format: "clipboard", icon: "content_copy", label: "COPY" },
+          { format: "copy-html", icon: "content_paste", label: "COPY HTML" },
+          { format: "json", icon: "data_object", label: "JSON" },
+        ].map(({ format, icon, label }) => (
+          <button
+            key={format}
+            onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-export", { detail: format }))}
+            className="flex items-center gap-2 rounded-sm bg-surface-container-high px-3 py-2 text-[10px] font-label-caps text-on-surface-variant border border-outline-variant hover:border-tertiary hover:text-tertiary transition-all tracking-wider"
+          >
+            <span className="material-symbols-outlined text-base">{icon}</span>
+            {label}
+          </button>
+        ))}
       </div>
 
       {dialogOpen && (
@@ -348,32 +418,41 @@ function UploadSection({ state, dispatch }: { state: ReturnType<typeof useApp>; 
   return (
     <div className="space-y-4">
       {state.imageUrl && (
-        <div className="rounded-lg overflow-hidden bg-surface-container">
-          <img src={state.imageUrl} alt="Current" className="w-full h-40 object-contain" />
+        <div className="rounded-sm overflow-hidden bg-surface-container border border-outline-variant">
+          <img src={state.imageUrl} alt="Current" className="w-full h-32 object-contain" />
         </div>
       )}
-      <div className="p-3 rounded-lg bg-surface-container-low border border-outline-variant/10">
-        <p className="text-[13px] text-on-surface-variant leading-tight">
-          <span className="text-primary font-bold">Pro Tip:</span> Hold <kbd className="px-1.5 py-0.5 bg-surface-variant rounded text-on-surface">C</kbd> to enter Comparison Mode.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Image Adjustments</label>
-        <SliderControl label="Brightness" value={state.adjustments.brightness} min={-100} max={100} step={1} onChange={(v) => dispatch({ type: "SET_ADJUSTMENTS", adj: { brightness: v } })} />
-        <SliderControl label="Contrast" value={state.adjustments.contrast} min={0.5} max={2} step={0.05} format={(v) => v.toFixed(2)} onChange={(v) => dispatch({ type: "SET_ADJUSTMENTS", adj: { contrast: v } })} />
-        <SliderControl label="Detail Level" value={state.canvas.asciiWidth} min={30} max={250} step={5} onChange={(v) => dispatch({ type: "SET_CANVAS", canvas: { asciiWidth: v, asciiHeight: Math.round(v * 0.5) } })} />
-      </div>
-      <div className="space-y-2">
-        <label className="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium">Transform</label>
+
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Image Adjustments</h3>
+        <div className="space-y-2">
+          <SliderControl label="BRIGHTNESS" value={state.adjustments.brightness} min={-100} max={100} step={1} onChange={(v) => dispatch({ type: "SET_ADJUSTMENTS", adj: { brightness: v } })} />
+          <SliderControl label="CONTRAST" value={state.adjustments.contrast} min={0.5} max={2} step={0.05} format={(v) => v.toFixed(2)} onChange={(v) => dispatch({ type: "SET_ADJUSTMENTS", adj: { contrast: v } })} />
+          <SliderControl label="GAMMA" value={state.adjustments.gamma} min={0.1} max={3} step={0.1} format={(v) => v.toFixed(1)} onChange={(v) => dispatch({ type: "SET_ADJUSTMENTS", adj: { gamma: v } })} />
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Transform</h3>
         <div className="flex gap-2">
-          <button onClick={() => dispatch({ type: "SET_TRANSFORM", t: { rotation: (state.transform.rotation + 90) % 360 } })} className="flex-1 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-container-high transition-all">
-            ↻ Rotate
+          <button
+            onClick={() => dispatch({ type: "SET_TRANSFORM", t: { rotation: (state.transform.rotation + 90) % 360 } })}
+            className="flex-1 rounded-sm bg-surface-container-high px-3 py-2 text-[10px] font-label-caps text-on-surface-variant border border-outline-variant hover:border-tertiary hover:text-tertiary transition-all tracking-wider"
+          >
+            ROTATE
           </button>
-          <button onClick={() => dispatch({ type: "SET_TRANSFORM", t: { flipH: !state.transform.flipH } })} className={`flex-1 rounded-lg px-3 py-2 text-sm transition-all ${state.transform.flipH ? "bg-primary/20 text-primary" : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"}`}>
-            ↔ Flip
+          <button
+            onClick={() => dispatch({ type: "SET_TRANSFORM", t: { flipH: !state.transform.flipH } })}
+            className={`flex-1 rounded-sm px-3 py-2 text-[10px] font-label-caps border transition-all tracking-wider ${
+              state.transform.flipH
+                ? "bg-secondary/20 text-secondary border-secondary"
+                : "bg-surface-container-high text-on-surface-variant border-outline-variant hover:border-tertiary hover:text-tertiary"
+            }`}
+          >
+            FLIP
           </button>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -390,8 +469,8 @@ function SliderControl({ label, value, min, max, step, format, onChange }: {
   const display = format ? format(value) : value;
   return (
     <div className="space-y-1">
-      <div className="flex justify-between text-[11px] text-on-surface-variant font-medium">
-        <span>{label}</span>
+      <div className="flex justify-between text-[10px] text-on-surface-variant font-label-caps">
+        <span className="tracking-wider">{label}</span>
         <span>{display}</span>
       </div>
       <input
@@ -401,7 +480,7 @@ function SliderControl({ label, value, min, max, step, format, onChange }: {
         step={step}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full accent-primary"
+        className="w-full accent-tertiary"
       />
     </div>
   );

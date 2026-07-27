@@ -10,15 +10,15 @@ interface Props {
 }
 
 const dockItems: { id: DockSection; icon: string; label: string }[] = [
-  { id: "upload", icon: "upload_file", label: "Upload" },
-  { id: "brush", icon: "brush", label: "Brush" },
-  { id: "characters", icon: "font_download", label: "Chars" },
-  { id: "colors", icon: "palette", label: "Colors" },
-  { id: "layers", icon: "layers", label: "Layers" },
+  { id: "upload", icon: "near_me", label: "SELECT" },
+  { id: "brush", icon: "edit", label: "DRAW" },
+  { id: "characters", icon: "format_size", label: "TYPE" },
+  { id: "colors", icon: "palette", label: "PALETTE" },
 ];
 
 const dockBottom: { id: DockSection; icon: string; label: string }[] = [
-  { id: "export", icon: "ios_share", label: "Export" },
+  { id: "layers", icon: "layers", label: "LAYERS" },
+  { id: "export", icon: "ios_share", label: "EXPORT" },
 ];
 
 export default function Dock({ activeSection, onSectionChange, mobileInspectorOpen, onMobileInspectorToggle }: Props) {
@@ -39,94 +39,76 @@ export default function Dock({ activeSection, onSectionChange, mobileInspectorOp
 
   return (
     <>
-      {/* Desktop: Side panel */}
-      <aside className="hidden md:flex fixed left-0 top-16 bottom-16 z-40 flex-col items-center py-4 rounded-xl my-12 ml-12 w-20 hover:w-64 transition-all duration-500 overflow-hidden bg-surface-container/60 backdrop-blur-xl border border-primary/15 shadow-2xl group">
-        <div className="mb-8 text-primary font-bold flex items-center justify-center">
-          <span className="material-symbols-outlined text-4xl">terminal</span>
+      {/* Desktop: Left toolset sidebar */}
+      <aside className="hidden lg:flex fixed left-4 top-24 bottom-24 w-20 rounded-lg bg-surface border border-secondary flex-col items-center py-4 gap-3 z-40">
+        <div className="mb-4 text-center">
+          <p className="font-label-caps text-[10px] text-secondary opacity-60">TOOLSET</p>
+          <p className="font-label-caps text-[10px] text-secondary">V1.0.4</p>
         </div>
-        <div className="flex flex-col gap-3 w-full px-3">
-          {dockItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleClick(item.id)}
-              className={`w-full flex items-center gap-4 p-3 rounded-lg transition-all active:scale-95 ${
-                activeSection === item.id
-                  ? "bg-primary text-on-primary shadow-[0_0_15px_rgba(255,42,252,0.4)]"
-                  : "text-on-surface-variant hover:bg-primary/20 hover:text-primary neon-glow"
-              }`}
-            >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <span className="text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                {item.label}
-              </span>
-            </button>
-          ))}
-        </div>
-        <div className="my-4 border-t border-primary/20 w-8 mx-2" />
-        <div className="flex flex-col gap-3 w-full px-3">
-          {dockBottom.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleClick(item.id)}
-              className={`w-full flex items-center gap-4 p-3 rounded-lg transition-all active:scale-95 ${
-                activeSection === item.id
-                  ? "bg-primary text-on-primary shadow-[0_0_15px_rgba(255,42,252,0.4)]"
-                  : "text-on-surface-variant hover:bg-primary/20 hover:text-primary neon-glow"
-              }`}
-            >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <span className="text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                {item.label}
-              </span>
-            </button>
-          ))}
-        </div>
-        {state.imageUrl && (
-          <>
-            <div className="my-4 border-t border-primary/20 w-8 mx-2" />
-            <div className="flex flex-col gap-3 w-full px-3">
-              <button
-                onClick={handleClear}
-                className="w-full flex items-center gap-4 p-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-all active:scale-95 neon-glow"
-              >
-                <span className="material-symbols-outlined">delete</span>
-                <span className="text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  Clear
-                </span>
-              </button>
-            </div>
-          </>
-        )}
-      </aside>
 
-      {/* Mobile: Bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around h-14 bg-surface-container/80 backdrop-blur-xl border-t border-primary/15 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
         {dockItems.map((item) => (
           <button
             key={item.id}
             onClick={() => handleClick(item.id)}
-            className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-lg transition-all ${
+            className={`w-14 flex flex-col items-center justify-center rounded-sm p-2 transition-all active:scale-95 ${
               activeSection === item.id && mobileInspectorOpen
-                ? "text-primary"
-                : "text-on-surface-variant"
+                ? "bg-secondary text-on-secondary"
+                : "text-secondary hover:bg-secondary-container hover:text-on-secondary-container"
             }`}
           >
-            <span className="material-symbols-outlined text-[22px]">{item.icon}</span>
-            <span className="text-[9px] font-medium">{item.label}</span>
+            <span className="material-symbols-outlined text-xl">{item.icon}</span>
+            <span className="font-label-caps text-[8px] mt-1">{item.label}</span>
           </button>
         ))}
-        {dockBottom.map((item) => (
+
+        <div className="mt-auto border-t border-secondary w-full pt-3 flex flex-col items-center gap-3">
+          {dockBottom.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => handleClick(item.id)}
+              className={`w-14 flex flex-col items-center justify-center rounded-sm p-2 transition-all active:scale-95 ${
+                activeSection === item.id && mobileInspectorOpen
+                  ? "bg-secondary text-on-secondary"
+                  : "text-secondary hover:bg-secondary-container hover:text-on-secondary-container"
+              }`}
+            >
+              <span className="material-symbols-outlined text-xl">{item.icon}</span>
+              <span className="font-label-caps text-[8px] mt-1">{item.label}</span>
+            </button>
+          ))}
+          {state.imageUrl && (
+            <button
+              onClick={handleClear}
+              className="w-14 flex flex-col items-center justify-center rounded-sm p-2 text-secondary hover:bg-error-container/30 hover:text-error transition-all active:scale-95"
+            >
+              <span className="material-symbols-outlined text-xl">delete</span>
+              <span className="font-label-caps text-[8px] mt-1">CLEAR</span>
+            </button>
+          )}
+          <button className="w-14 flex flex-col items-center justify-center rounded-sm p-2 text-secondary hover:bg-secondary-container transition-all">
+            <span className="material-symbols-outlined text-xl">help_outline</span>
+            <span className="font-label-caps text-[8px] mt-1">HELP</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile: Bottom tab bar */}
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around h-14 bg-surface border-t border-outline-variant"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        {[...dockItems, ...dockBottom].map((item) => (
           <button
             key={item.id}
             onClick={() => handleClick(item.id)}
             className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-lg transition-all ${
               activeSection === item.id && mobileInspectorOpen
-                ? "text-primary"
+                ? "text-secondary"
                 : "text-on-surface-variant"
             }`}
           >
             <span className="material-symbols-outlined text-[22px]">{item.icon}</span>
-            <span className="text-[9px] font-medium">{item.label}</span>
+            <span className="text-[9px] font-label-caps tracking-wider">{item.label}</span>
           </button>
         ))}
         {state.imageUrl && (
@@ -135,7 +117,7 @@ export default function Dock({ activeSection, onSectionChange, mobileInspectorOp
             className="flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-lg text-on-surface-variant"
           >
             <span className="material-symbols-outlined text-[22px]">delete</span>
-            <span className="text-[9px] font-medium">Clear</span>
+            <span className="text-[9px] font-label-caps tracking-wider">CLEAR</span>
           </button>
         )}
       </nav>

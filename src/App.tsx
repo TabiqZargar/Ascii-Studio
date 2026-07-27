@@ -353,12 +353,12 @@ export default function App() {
 
   const mainPadding = isMobile
     ? { paddingLeft: 0, paddingRight: 0, paddingTop: 56, paddingBottom: 168 }
-    : { paddingLeft: 80, paddingRight: 332, paddingTop: 80, paddingBottom: isAnimating ? 120 : 52 };
+    : { paddingLeft: 96, paddingRight: 272, paddingTop: 80, paddingBottom: isAnimating ? 80 : 64 };
 
   return (
     <AppContext.Provider value={state}>
       <DispatchContext.Provider value={dispatch}>
-        <div className="h-screen w-screen overflow-hidden bg-background text-on-background">
+        <div className="h-screen w-screen overflow-hidden bg-background text-on-background riso-grain">
           <ShaderBackground />
 
           {screen === "landing" ? (
@@ -393,7 +393,7 @@ export default function App() {
               >
                 <div
                   ref={canvasContainerRef}
-                  className="relative w-full h-full glass-panel md:rounded-2xl checkerboard shadow-inner"
+                  className="relative w-full h-full border border-outline-variant shadow-2xl overflow-hidden"
                 >
                   {state.comparisonMode ? (
                     <ComparisonSlider asciiOutput={state.asciiOutput} colorGrid={state.colorGrid} />
@@ -408,10 +408,10 @@ export default function App() {
                   {state.imageUrl && <FloatingZoom containerRef={canvasContainerRef} />}
 
                   {state.loading && (
-                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm md:rounded-2xl">
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                       <div className="flex flex-col items-center gap-3">
                         <div className="h-8 w-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary" />
-                        <span className="text-sm text-on-surface-variant">Processing...</span>
+                        <span className="text-sm text-on-surface-variant font-label-caps tracking-wider">PROCESSING...</span>
                       </div>
                     </div>
                   )}
@@ -421,7 +421,7 @@ export default function App() {
               {isAnimating && <Timeline />}
 
               {!state.fullscreen && state.imageUrl && !isAnimating && (
-                <div className="fixed bottom-14 md:bottom-3 left-0 md:left-20 right-0 md:right-3 z-30 flex items-center gap-3 rounded-none md:rounded-xl bg-surface/80 md:bg-surface/60 backdrop-blur-xl border-t md:border border-outline-variant/20 px-3 md:px-4 py-2" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
+                <div className="fixed bottom-14 md:bottom-4 left-0 md:left-24 right-0 md:right-4 z-30 flex items-center gap-3 rounded-none md:rounded-lg bg-surface border-t md:border border-outline-variant px-4 py-2" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
                   <Histogram imageData={state.imageData} />
                 </div>
               )}
