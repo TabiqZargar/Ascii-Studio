@@ -23,6 +23,7 @@ import FloatingZoom from "./components/common/FloatingZoom";
 import Timeline from "./components/panels/Timeline";
 import Upload from "./components/panels/Upload";
 import Histogram from "./components/panels/Histogram";
+import Footer from "./components/common/Footer";
 
 const INITIAL_FAST_COUNT = 3;
 const PREBUFFER_COUNT = 5;
@@ -421,12 +422,14 @@ export default function App() {
               {isAnimating && <Timeline />}
 
               {!state.fullscreen && state.imageUrl && !isAnimating && (
-                <div className="fixed bottom-14 md:bottom-4 left-0 md:left-24 right-0 md:right-4 z-30 flex items-center gap-3 rounded-none md:rounded-lg bg-surface border-t md:border border-outline-variant px-4 py-2" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
+                <div className="fixed bottom-10 md:bottom-10 left-0 md:left-24 right-0 md:right-4 z-30 flex items-center gap-3 rounded-none md:rounded-lg bg-surface border-t md:border border-outline-variant px-4 py-2" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
                   <Histogram imageData={state.imageData} />
                 </div>
               )}
             </>
           )}
+
+          {!state.fullscreen && <Footer />}
         </div>
       </DispatchContext.Provider>
     </AppContext.Provider>
