@@ -5,7 +5,13 @@ import { getActiveCharString } from "../context/appReducer";
 export interface ConvertParams {
   charset: string;
   asciiWidth: number;
-  adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean };
+  adjustments: {
+    brightness: number;
+    contrast: number;
+    gamma: number;
+    invert: boolean;
+    luminanceFormula: "perceived" | "average" | "max";
+  };
 }
 
 type PendingRequest =
@@ -88,6 +94,7 @@ export function useAsciiWorker() {
           contrast: state.adjustments.contrast,
           gamma: state.adjustments.gamma,
           invert: state.adjustments.invert,
+          luminanceFormula: state.luminanceFormula,
         },
       });
     },
@@ -121,7 +128,13 @@ export function useAsciiWorker() {
       frames: ImageData[],
       charset: string,
       asciiWidth: number,
-      adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean },
+      adjustments: {
+        brightness: number;
+        contrast: number;
+        gamma: number;
+        invert: boolean;
+        luminanceFormula: "perceived" | "average" | "max";
+      },
       onProgress: (current: number, total: number) => void,
       onDone: (results: { output: string; colorGrid: string[][] }[]) => void
     ) => {

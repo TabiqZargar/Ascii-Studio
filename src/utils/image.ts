@@ -114,9 +114,12 @@ export function analyzeImage(imageData: ImageData): ImageAnalysis {
   let brightnessSum = 0;
   let contrastSum = 0;
   let edgeCount = 0;
+  let transparentCount = 0;
 
   const gray = new Uint8ClampedArray(totalPixels);
   for (let i = 0; i < data.length; i += 4) {
+    const alpha = data[i + 3];
+    if (alpha < 128) transparentCount++;
     const lum = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
     gray[i / 4] = lum;
     brightnessSum += lum;
@@ -139,11 +142,21 @@ export function analyzeImage(imageData: ImageData): ImageAnalysis {
   }
 
   const edgeRatio = edgeCount / totalPixels;
+  const transparencyRatio = transparentCount / totalPixels;
+  const isMostlyTransparent = transparencyRatio > 0.5;
+  const isMostlyDarkOpaque = transparencyRatio < 0.5 && avgBrightness < 40;
+
   let score: ImageAnalysis["score"];
   let label: string;
   let detail: string;
 
-  if (avgContrast > 50 && avgBrightness > 40 && avgBrightness < 220) {
+  if (isMostlyTransparent || isMostlyDarkOpaque) {
+    score = "difficult";
+    label = "Needs adjustment";
+    detail = isMostlyTransparent
+      ? "Mostly transparent — set a background color"
+      : "Very dark — try Invert or adjust brightness";
+  } else if (avgContrast > 50 && avgBrightness > 40 && avgBrightness < 220) {
     score = "excellent";
     label = "Great for ASCII";
     detail = "Good contrast and brightness";
@@ -163,4 +176,58 @@ export function analyzeImage(imageData: ImageData): ImageAnalysis {
   else if (avgBrightness > 180) suggestedPreset = "high-contrast";
 
   return { score, label, detail, suggestedPreset, avgBrightness, avgContrast };
+}
+
+export function compositeTransparency(
+  imageData: ImageData,
+  bgColor: string
+): ImageData {
+  const { data, width, height } = imageData;
+  let bgR: number, bgG: number, bgB: number;
+
+  if (bgColor === "checkerboard") {
+    bgR = 204; bgG = 204; bgB = 204;
+  } else if (bgColor.startsWith("#")) {
+    const hex = bgColor.slice(1);
+    bgR = parseInt(hex.substring(0, 2), 16);
+    bgG = parseInt(hex.substring(2, 4), 16);
+    bgB = parseInt(hex.substring(4, 6), 16);
+  } else {
+    bgR = 255; bgG = 255; bgB = 255;
+  }
+
+  const out = new Uint8ClampedArray(data.length);
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3] / 255;
+    out[i]     = Math.round(data[i] * a + bgR * (1 - a));
+    out[i + 1] = Math.round(data[i + 1] * a + bgG * (1 - a));
+    out[i + 2] = Math.round(data[i + 2] * a + bgB * (1 - a));
+    out[i + 3] = 255;
+  }
+
+  return new ImageData(out, width, height);
+}
+
+export function hasSignificantTransparency(imageData: ImageData, threshold = 0.1): boolean {
+  const { data } = imageData;
+  let transparentCount = 0;
+  let totalPixels = 0;
+  for (let i = 3; i < data.length; i += 4) {
+    totalPixels++;
+    if (data[i] < 128) transparentCount++;
+  }
+  return transparentCount / totalPixels > threshold;
+}
+
+export function isMostlyDark(imageData: ImageData, threshold = 40): boolean {
+  const { data } = imageData;
+  let darkCount = 0;
+  let opaqueCount = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 128) continue;
+    opaqueCount++;
+    const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    if (lum < threshold) darkCount++;
+  }
+  return opaqueCount > 0 && darkCount / opaqueCount > 0.7;
 }

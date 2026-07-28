@@ -371,6 +371,64 @@ function UploadSection({ state, dispatch }: { state: ReturnType<typeof useApp>; 
       )}
 
       <section>
+        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Image Settings</h3>
+        <div className="space-y-2">
+          <button
+            onClick={() => dispatch({ type: "SET_ADJUSTMENTS", adj: { invert: !state.adjustments.invert } })}
+            className={`w-full flex items-center justify-between rounded-sm px-3 py-2 text-[10px] font-label-caps border transition-all tracking-wider ${
+              state.adjustments.invert
+                ? "bg-secondary/20 text-secondary border-secondary"
+                : "bg-surface-container-high text-on-surface-variant border-outline-variant hover:border-tertiary hover:text-tertiary"
+            }`}
+          >
+            <span>INVERT</span>
+            <span className={`material-symbols-outlined text-[16px] ${state.adjustments.invert ? "text-secondary" : "text-on-surface-variant"}`}>
+              {state.adjustments.invert ? "toggle_on" : "toggle_off"}
+            </span>
+          </button>
+
+          <div className="space-y-1">
+            <label className="font-label-caps text-[9px] text-on-surface-variant tracking-wider">LUMINANCE</label>
+            <select
+              value={state.luminanceFormula}
+              onChange={(e) => dispatch({ type: "SET_LUMINANCE_FORMULA", formula: e.target.value as import("../../types").LuminanceFormula })}
+              className="w-full rounded-sm border border-outline-variant bg-surface-container px-2 py-1.5 text-xs font-label-caps text-on-surface outline-none focus:border-tertiary transition-colors tracking-wider appearance-none cursor-pointer"
+            >
+              <option value="perceived">Perceived (Rec. 709)</option>
+              <option value="average">Average RGB</option>
+              <option value="max">Max Channel</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="font-label-caps text-[9px] text-on-surface-variant tracking-wider">TRANSPARENCY BG</label>
+            <select
+              value={state.transparencyBg}
+              onChange={(e) => dispatch({ type: "SET_TRANSPARENCY_BG", bg: e.target.value as import("../../types").TransparencyBg })}
+              className="w-full rounded-sm border border-outline-variant bg-surface-container px-2 py-1.5 text-xs font-label-caps text-on-surface outline-none focus:border-tertiary transition-colors tracking-wider appearance-none cursor-pointer"
+            >
+              <option value="white">White</option>
+              <option value="black">Black</option>
+              <option value="checkerboard">Checkerboard</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          {state.transparencyBg === "custom" && (
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={state.transparencyCustomColor}
+                onChange={(e) => dispatch({ type: "SET_TRANSPARENCY_CUSTOM_COLOR", color: e.target.value })}
+                className="h-8 w-8 cursor-pointer border-0 bg-transparent"
+              />
+              <span className="text-sm font-label-caps text-on-surface-variant tracking-wider">{state.transparencyCustomColor}</span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section>
         <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Image Adjustments</h3>
         <div className="space-y-2">
           <SliderControl label="BRIGHTNESS" value={state.adjustments.brightness} min={-100} max={100} step={1} onChange={(v) => dispatch({ type: "SET_ADJUSTMENTS", adj: { brightness: v } })} />

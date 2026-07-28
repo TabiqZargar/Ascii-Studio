@@ -41,6 +41,10 @@ export const initialState: AppState = {
 
   transform: { rotation: 0, flipH: false, flipV: false },
 
+  luminanceFormula: "perceived",
+  transparencyBg: "white",
+  transparencyCustomColor: "#ffffff",
+
   asciiOutput: "",
   colorGrid: [],
   loading: false,
@@ -99,6 +103,9 @@ export type Action =
   | { type: "SET_ADJUSTMENTS"; adj: Partial<AppState["adjustments"]> }
   | { type: "RESET_ADJUSTMENTS" }
   | { type: "SET_BACKGROUND"; bg: Partial<AppState["background"]> }
+  | { type: "SET_LUMINANCE_FORMULA"; formula: AppState["luminanceFormula"] }
+  | { type: "SET_TRANSPARENCY_BG"; bg: AppState["transparencyBg"] }
+  | { type: "SET_TRANSPARENCY_CUSTOM_COLOR"; color: string }
   | { type: "SET_TRANSFORM"; t: Partial<AppState["transform"]> }
   | { type: "SET_ASCII"; output: string; colorGrid: string[][]; time: number }
   | { type: "SET_LOADING"; loading: boolean }
@@ -149,6 +156,9 @@ function captureSettings(state: AppState): SettingsSnapshot {
     adjustments: { ...state.adjustments },
     background: { ...state.background },
     transform: { ...state.transform },
+    luminanceFormula: state.luminanceFormula,
+    transparencyBg: state.transparencyBg,
+    transparencyCustomColor: state.transparencyCustomColor,
   };
 }
 
@@ -193,6 +203,12 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, adjustments: { brightness: 0, contrast: 1, saturation: 1, exposure: 1, gamma: 1, sharpness: 0, blur: 0, invert: false, grayscale: false, edgeDetection: false } };
     case "SET_BACKGROUND":
       return { ...state, background: { ...state.background, ...action.bg } };
+    case "SET_LUMINANCE_FORMULA":
+      return { ...state, luminanceFormula: action.formula };
+    case "SET_TRANSPARENCY_BG":
+      return { ...state, transparencyBg: action.bg };
+    case "SET_TRANSPARENCY_CUSTOM_COLOR":
+      return { ...state, transparencyCustomColor: action.color };
     case "SET_TRANSFORM":
       return { ...state, transform: { ...state.transform, ...action.t } };
     case "SET_ASCII":
@@ -286,6 +302,9 @@ export function appReducer(state: AppState, action: Action): AppState {
         canvas: { ...state.canvas, fontSize: preset.fontSize },
         adjustments: { ...state.adjustments, brightness: preset.brightness, contrast: preset.contrast },
         background: { ...state.background, type: preset.background },
+        luminanceFormula: state.luminanceFormula,
+        transparencyBg: state.transparencyBg,
+        transparencyCustomColor: state.transparencyCustomColor,
       });
     }
     case "SURPRISE_ME": {
@@ -352,6 +371,9 @@ export function appReducer(state: AppState, action: Action): AppState {
         adjustments: prev.adjustments,
         background: prev.background,
         transform: prev.transform,
+        luminanceFormula: prev.luminanceFormula,
+        transparencyBg: prev.transparencyBg,
+        transparencyCustomColor: prev.transparencyCustomColor,
         settingsUndoStack: state.settingsUndoStack.slice(0, -1),
         settingsRedoStack: [...state.settingsRedoStack, currentSnapshot],
       };
@@ -370,6 +392,9 @@ export function appReducer(state: AppState, action: Action): AppState {
         adjustments: next.adjustments,
         background: next.background,
         transform: next.transform,
+        luminanceFormula: next.luminanceFormula,
+        transparencyBg: next.transparencyBg,
+        transparencyCustomColor: next.transparencyCustomColor,
         settingsRedoStack: state.settingsRedoStack.slice(0, -1),
         settingsUndoStack: [...state.settingsUndoStack, currentSnapshot],
       };

@@ -1,25 +1,48 @@
 /**
- * Simple, high-quality ASCII conversion.
+ * ASCII conversion pipeline.
  *
  * Pipeline: Canvas resize → aspect ratio correction → block sample →
- * perceptual luminance → character mapping.
+ * luminance (perceived/average/max) → brightness/contrast/gamma →
+ * invert → normalize to [0,1] → character mapping.
  *
- * No dithering, no shape matching, no aggressive preprocessing.
+ * Transparent pixels are composited onto a background before conversion.
  */
 
 const CHAR_RAMP = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,^`' .";
+
+function computeLuminance(
+  r: number, g: number, b: number,
+  formula: "perceived" | "average" | "max"
+): number {
+  switch (formula) {
+    case "average":
+      return (r + g + b) / 3;
+    case "max":
+      return Math.max(r, g, b);
+    case "perceived":
+    default:
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+}
 
 function convertFrame(
   imageData: ImageData,
   charset: string,
   width: number,
-  adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean }
+  adjustments: {
+    brightness: number;
+    contrast: number;
+    gamma: number;
+    invert: boolean;
+    luminanceFormula: "perceived" | "average" | "max";
+  }
 ): { output: string; colorGrid: string[][] } {
   const chars = charset || CHAR_RAMP;
   const { width: srcW, height: srcH, data } = imageData;
   const aspectCorrection = 0.5;
   const outW = width;
   const outH = Math.round((srcH / srcW) * outW * aspectCorrection);
+  if (outH === 0) return { output: "", colorGrid: [] };
   const blockW = srcW / outW;
   const blockH = srcH / outH;
   const brightness = adjustments.brightness;
@@ -28,6 +51,8 @@ function convertFrame(
   const gamma = adjustments.gamma;
   const invGamma = gamma !== 1 ? 1 / gamma : 1;
   const invert = adjustments.invert;
+  const formula = adjustments.luminanceFormula;
+  const numChars = chars.length;
   const lines: string[] = [];
   const colorLines: string[][] = [];
 
@@ -50,7 +75,7 @@ function convertFrame(
           const r = data[idx];
           const g = data[idx + 1];
           const b = data[idx + 2];
-          lumSum += 0.299 * r + 0.587 * g + 0.114 * b;
+          lumSum += computeLuminance(r, g, b, formula);
           rSum += r;
           gSum += g;
           bSum += b;
@@ -58,15 +83,23 @@ function convertFrame(
         }
       }
       let lum = lumSum / count;
+
       lum += brightness;
+
       lum = contrastFactor * (lum - 128) + 128;
+
       if (invGamma !== 1) {
         lum = 255 * Math.pow(Math.max(0, Math.min(255, lum)) / 255, invGamma);
       }
+
       lum = Math.max(0, Math.min(255, lum));
+
       if (invert) lum = 255 - lum;
-      const charIdx = Math.floor((lum / 255) * (chars.length - 1));
-      line.push(chars[Math.max(0, Math.min(charIdx, chars.length - 1))]);
+
+      const normalized = lum / 255;
+      const charIdx = Math.floor((1 - normalized) * (numChars - 1));
+      line.push(chars[Math.max(0, Math.min(charIdx, numChars - 1))]);
+
       const r = Math.round(rSum / count);
       const g = Math.round(gSum / count);
       const b = Math.round(bSum / count);
@@ -86,17 +119,22 @@ self.onmessage = (e: MessageEvent) => {
       frames: ImageData[];
       charset: string;
       width: number;
-      adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean };
+      adjustments: {
+        brightness: number;
+        contrast: number;
+        gamma: number;
+        invert: boolean;
+        luminanceFormula: "perceived" | "average" | "max";
+      };
     };
-    
+
     const results: { output: string; colorGrid: string[][] }[] = [];
     for (let i = 0; i < frames.length; i++) {
-      // ASSERTION: Frame data
       if (!frames[i] || frames[i].data.length === 0) {
         console.error(`[Worker] Empty frame data at index ${i}`);
         continue;
       }
-      
+
       results.push(convertFrame(frames[i], charset, width, adjustments));
       self.postMessage({ type: "progress", current: i + 1, total: frames.length });
     }
@@ -108,7 +146,13 @@ self.onmessage = (e: MessageEvent) => {
     imageData: ImageData;
     charset: string;
     width: number;
-    adjustments: { brightness: number; contrast: number; gamma: number; invert: boolean };
+    adjustments: {
+      brightness: number;
+      contrast: number;
+      gamma: number;
+      invert: boolean;
+      luminanceFormula: "perceived" | "average" | "max";
+    };
   };
 
   const result = convertFrame(imageData, charset, width, adjustments);

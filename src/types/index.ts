@@ -7,6 +7,10 @@ export interface CharPreset {
 
 export type ColorMode = "mono" | "original" | "matrix" | "amber" | "cyberpunk" | "fire";
 
+export type LuminanceFormula = "perceived" | "average" | "max";
+
+export type TransparencyBg = "white" | "black" | "checkerboard" | "custom";
+
 export interface CanvasSettings {
   asciiWidth: number;
   asciiHeight: number;
@@ -116,6 +120,9 @@ export interface SettingsSnapshot {
   adjustments: ImageAdjustments;
   background: BackgroundSettings;
   transform: Transform;
+  luminanceFormula: LuminanceFormula;
+  transparencyBg: TransparencyBg;
+  transparencyCustomColor: string;
 }
 
 export interface AsciiFrame {
@@ -151,6 +158,9 @@ export interface AppState {
   adjustments: ImageAdjustments;
   background: BackgroundSettings;
   transform: Transform;
+  luminanceFormula: LuminanceFormula;
+  transparencyBg: TransparencyBg;
+  transparencyCustomColor: string;
 
   asciiOutput: string;
   colorGrid: string[][];

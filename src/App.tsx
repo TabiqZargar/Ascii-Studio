@@ -6,7 +6,7 @@ import { useAsciiWorker } from "./hooks/useAsciiWorker";
 import type { ConvertParams } from "./hooks/useAsciiWorker";
 import { useDebounce } from "./hooks/useDebounce";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { applyTransform } from "./utils/image";
+import { applyTransform, compositeTransparency, hasSignificantTransparency, isMostlyDark } from "./utils/image";
 import { exportTxt, exportSvg, exportHtml, exportPng, exportProjectJson, exportGif, downloadBlob } from "./utils/export";
 import { saveProject, loadProjects } from "./utils/storage";
 import { CHAR_PRESETS } from "./data/presets";
@@ -65,12 +65,29 @@ export default function App() {
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const [invertSuggestion, setInvertSuggestion] = useState<string | null>(null);
 
   useEffect(() => {
     if (state.imageUrl && screen === "landing") {
       setScreen("workspace");
     }
   }, [state.imageUrl, screen]);
+
+  useEffect(() => {
+    if (!state.imageData || state.adjustments.invert) {
+      setInvertSuggestion(null);
+      return;
+    }
+    const hasTransparency = hasSignificantTransparency(state.imageData, 0.1);
+    const isDark = isMostlyDark(state.imageData, 40);
+    if (hasTransparency) {
+      setInvertSuggestion("This image has transparency. Set a background color under IMAGE SETTINGS for best results.");
+    } else if (isDark) {
+      setInvertSuggestion("This image may render better with Invert enabled.");
+    } else {
+      setInvertSuggestion(null);
+    }
+  }, [state.imageData, state.adjustments.invert]);
 
   const enterWorkspace = useCallback(() => {
     setScreen("workspace");
@@ -88,9 +105,10 @@ export default function App() {
         contrast: state.adjustments.contrast,
         gamma: state.adjustments.gamma,
         invert: state.adjustments.invert,
+        luminanceFormula: state.luminanceFormula,
       },
     };
-  }, [state.charPresetId, state.customChars, state.canvas.asciiWidth, state.adjustments]);
+  }, [state.charPresetId, state.customChars, state.canvas.asciiWidth, state.adjustments, state.luminanceFormula]);
 
   const processQueue = useCallback(() => {
     console.log("[CHECK processing]", { processing: processingRef.current });
@@ -134,7 +152,15 @@ export default function App() {
       const rawFrame = anim.rawFrames[idx];
       console.log("[STEP] apply transform");
       const hasTransform = stateRef.current.transform.rotation !== 0 || stateRef.current.transform.flipH || stateRef.current.transform.flipV;
-      const frame = hasTransform ? applyTransform(rawFrame, stateRef.current.transform) : rawFrame;
+      let frame = hasTransform ? applyTransform(rawFrame, stateRef.current.transform) : rawFrame;
+      const needsComposite = hasSignificantTransparency(rawFrame, 0.01);
+      if (needsComposite) {
+        const bgColor = stateRef.current.transparencyBg === "custom" ? stateRef.current.transparencyCustomColor
+          : stateRef.current.transparencyBg === "white" ? "#ffffff"
+          : stateRef.current.transparencyBg === "black" ? "#000000"
+          : "#cccccc";
+        frame = compositeTransparency(frame, bgColor);
+      }
       console.log("[STEP] get convert params");
       const params = getConvertParams();
       const gen = generationRef.current;
@@ -164,7 +190,15 @@ export default function App() {
     if (!state.imageData) return;
     dispatch({ type: "SET_LOADING", loading: true });
     const hasTransform = state.transform.rotation !== 0 || state.transform.flipH || state.transform.flipV;
-    const processed = hasTransform ? applyTransform(state.imageData, state.transform) : state.imageData;
+    let processed = hasTransform ? applyTransform(state.imageData, state.transform) : state.imageData;
+    const needsComposite = hasSignificantTransparency(state.imageData, 0.01);
+    if (needsComposite) {
+      const bgColor = state.transparencyBg === "custom" ? state.transparencyCustomColor
+        : state.transparencyBg === "white" ? "#ffffff"
+        : state.transparencyBg === "black" ? "#000000"
+        : "#cccccc";
+      processed = compositeTransparency(processed, bgColor);
+    }
     const start = performance.now();
     convert({ ...state, imageData: processed }, (output, colorGrid) => {
       dispatch({ type: "SET_ASCII", output, colorGrid, time: Math.round(performance.now() - start) });
@@ -175,7 +209,7 @@ export default function App() {
 
   useEffect(() => {
     if (state.imageData && state.animation.rawFrames.length === 0) debouncedConvert();
-  }, [state.imageData, state.charPresetId, state.customChars, state.canvas.asciiWidth, state.canvas.asciiHeight, state.adjustments, state.transform, debouncedConvert, state.animation.rawFrames.length]);
+  }, [state.imageData, state.charPresetId, state.customChars, state.canvas.asciiWidth, state.canvas.asciiHeight, state.adjustments, state.transform, state.luminanceFormula, state.transparencyBg, state.transparencyCustomColor, debouncedConvert, state.animation.rawFrames.length]);
 
   useEffect(() => {
     if (state.animation.rawFrames.length > 0) {
@@ -210,9 +244,9 @@ export default function App() {
     }
   }, [state.animation.currentFrame, state.animation.playing, state.animation.rawFrames.length, state.animation.frameCache, processQueue]);
 
-  const prevSettingsRef = useRef(`${state.charPresetId}|${state.canvas.asciiWidth}|${state.adjustments.brightness}|${state.adjustments.contrast}|${state.adjustments.gamma}|${state.adjustments.invert}`);
+  const prevSettingsRef = useRef(`${state.charPresetId}|${state.canvas.asciiWidth}|${state.adjustments.brightness}|${state.adjustments.contrast}|${state.adjustments.gamma}|${state.adjustments.invert}|${state.luminanceFormula}|${state.transparencyBg}|${state.transparencyCustomColor}`);
   useEffect(() => {
-    const key = `${state.charPresetId}|${state.canvas.asciiWidth}|${state.adjustments.brightness}|${state.adjustments.contrast}|${state.adjustments.gamma}|${state.adjustments.invert}`;
+    const key = `${state.charPresetId}|${state.canvas.asciiWidth}|${state.adjustments.brightness}|${state.adjustments.contrast}|${state.adjustments.gamma}|${state.adjustments.invert}|${state.luminanceFormula}|${state.transparencyBg}|${state.transparencyCustomColor}`;
     if (prevSettingsRef.current !== key && state.animation.rawFrames.length > 0) {
       prevSettingsRef.current = key;
       generationRef.current++;
@@ -421,7 +455,16 @@ export default function App() {
 
               {isAnimating && <Timeline />}
 
-              {!state.fullscreen && state.imageUrl && !isAnimating && (
+              {invertSuggestion && !state.fullscreen && state.imageUrl && (
+                <div className="fixed bottom-10 md:bottom-10 left-0 md:left-24 right-0 md:right-4 z-30 flex items-center justify-center px-4 py-2" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
+                  <div className="flex items-center gap-2 bg-secondary-container/90 backdrop-blur-sm border border-secondary/30 rounded-sm px-3 py-1.5 max-w-lg">
+                    <span className="material-symbols-outlined text-sm text-secondary">lightbulb</span>
+                    <span className="text-[11px] font-label-caps text-on-secondary-container tracking-wider">{invertSuggestion}</span>
+                  </div>
+                </div>
+              )}
+
+              {!state.fullscreen && state.imageUrl && !isAnimating && !invertSuggestion && (
                 <div className="fixed bottom-10 md:bottom-10 left-0 md:left-24 right-0 md:right-4 z-30 flex items-center gap-3 rounded-none md:rounded-lg bg-surface border-t md:border border-outline-variant px-4 py-2" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
                   <Histogram imageData={state.imageData} />
                 </div>
