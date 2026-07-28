@@ -13,24 +13,6 @@ export default function Navbar() {
         <h1 className="font-headline text-lg sm:text-xl text-primary uppercase tracking-tighter">
           ASCII.STUDIO
         </h1>
-        <nav className="hidden md:flex items-center gap-4">
-          {[
-            { id: "upload", label: "Gallery" },
-            { id: "characters", label: "Presets" },
-            { id: "layers", label: "Layers" },
-            { id: "export", label: "Export" },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                dispatch({ type: "SET_COLOR_MODE", mode: state.colorMode });
-              }}
-              className="font-label-caps text-[11px] text-on-surface-variant hover:text-primary transition-all tracking-wider"
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
       </div>
 
       <div className="flex items-center gap-3">
@@ -42,21 +24,13 @@ export default function Navbar() {
         >
           Mint Art
         </button>
-        <div className="flex items-center gap-2">
-          <button
-            className="text-primary cursor-pointer hover:opacity-80 transition-opacity"
-            title="Settings"
-          >
-            <span className="material-symbols-outlined text-xl">settings</span>
-          </button>
-          <button
-            className="text-primary cursor-pointer hover:opacity-80 transition-opacity"
-            title="Fullscreen"
-            onClick={() => dispatch({ type: "TOGGLE_FULLSCREEN" })}
-          >
-            <span className="material-symbols-outlined text-xl">fullscreen</span>
-          </button>
-        </div>
+        <button
+          onClick={() => dispatch({ type: "TOGGLE_FULLSCREEN" })}
+          className="text-primary cursor-pointer hover:opacity-80 transition-opacity"
+          title="Fullscreen"
+        >
+          <span className="material-symbols-outlined text-xl">fullscreen</span>
+        </button>
       </div>
     </header>
   );

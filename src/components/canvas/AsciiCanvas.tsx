@@ -207,109 +207,74 @@ const AsciiCanvas = forwardRef<HTMLDivElement, Props>(function AsciiCanvas({ asc
     setShapeStart(null);
   }, [shapeStart, state.brushType, state.brushChar, dispatch]);
 
-  const zoomPercent = Math.round(state.zoom * 100);
-
   return (
-    <div className="absolute inset-0 flex flex-col overflow-hidden border border-outline-variant shadow-2xl bg-surface">
-      {/* Canvas Header */}
-      <div className="h-8 bg-surface-container flex items-center px-4 justify-between border-b border-outline-variant shrink-0">
-        <div className="flex gap-2">
-          <div className="w-2 h-2 rounded-full bg-primary/40" />
-          <div className="w-2 h-2 rounded-full bg-secondary/40" />
-          <div className="w-2 h-2 rounded-full bg-tertiary/40" />
-        </div>
-        <span className="font-label-caps text-[10px] text-on-surface-variant tracking-widest">UNTITLED_COMPOSITION_01.ASC</span>
-        <span className="font-label-caps text-[10px] text-primary tracking-wider">{state.canvas.asciiWidth} x {state.canvas.asciiHeight}</span>
-      </div>
-
-      {/* Viewport */}
+    <div
+      ref={setRefs}
+      className="absolute inset-0 overflow-hidden bg-[#0c0c0c] touch-none"
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={() => setIsPanning(false)}
+    >
       <div
-        ref={setRefs}
-        className="flex-1 p-4 overflow-auto ascii-viewport bg-[#0c0c0c] flex items-center justify-center touch-none"
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={() => setIsPanning(false)}
+        className="absolute inset-0 flex items-center justify-center"
+        style={{
+          transform: `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`,
+          transformOrigin: "center center",
+          cursor: isPanning ? "grabbing" : "default",
+        }}
       >
-        <div
-          className="absolute inset-0 flex items-center justify-center"
-          style={{
-            transform: `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`,
-            transformOrigin: "center center",
-            cursor: isPanning ? "grabbing" : "default",
-          }}
-        >
-          {asciiOutput ? (
-            <pre className="whitespace-pre font-mono text-primary" style={{ fontSize: `${fontSize}px`, lineHeight, letterSpacing: `${letterSpacing}px`, fontFamily, textShadow: "0 0 10px rgba(255,180,164,0.3)" }}>
-              {showAscii ? lines.map((line, y) => {
-                const cLine = colorGrid[y] ?? [];
-                return (
-                  <div key={y}>
-                    {line.split("").map((ch, x) => {
-                      const edited = state.editorGrid[y]?.[x]?.char;
-                      const display = edited ?? ch;
-                      let color: string | undefined;
-                      if (state.colorMode === "mono") {
-                        color = state.monoColor;
-                      } else if (state.colorMode === "original") {
-                        color = cLine[x] ?? state.monoColor;
-                      } else {
-                        const rgbStr = cLine[x];
-                        let lum = 128;
-                        if (rgbStr) {
-                          const match = rgbStr.match(/rgb\((\d+),(\d+),(\d+)\)/);
-                          if (match) lum = Math.round(0.299 * +match[1] + 0.587 * +match[2] + 0.114 * +match[3]);
-                        }
-                        color = getThemeColor(state.colorMode, lum, cLine[x]);
+        {asciiOutput ? (
+          <pre className="whitespace-pre font-mono text-primary" style={{ fontSize: `${fontSize}px`, lineHeight, letterSpacing: `${letterSpacing}px`, fontFamily, textShadow: "0 0 10px rgba(255,180,164,0.3)" }}>
+            {showAscii ? lines.map((line, y) => {
+              const cLine = colorGrid[y] ?? [];
+              return (
+                <div key={y}>
+                  {line.split("").map((ch, x) => {
+                    const edited = state.editorGrid[y]?.[x]?.char;
+                    const display = edited ?? ch;
+                    let color: string | undefined;
+                    if (state.colorMode === "mono") {
+                      color = state.monoColor;
+                    } else if (state.colorMode === "original") {
+                      color = cLine[x] ?? state.monoColor;
+                    } else {
+                      const rgbStr = cLine[x];
+                      let lum = 128;
+                      if (rgbStr) {
+                        const match = rgbStr.match(/rgb\((\d+),(\d+),(\d+)\)/);
+                        if (match) lum = Math.round(0.299 * +match[1] + 0.587 * +match[2] + 0.114 * +match[3]);
                       }
-                      return (
-                        <span
-                          key={x}
-                          style={color ? { color } : undefined}
-                          className={state.activeLayerId === "ascii-layer" && !asciiLayer?.locked ? "cursor-crosshair hover:bg-secondary/30" : ""}
-                          onMouseDown={(e) => handleCharMouseDown(y, x, e)}
-                          onMouseEnter={(e) => handleCharMouseEnter(y, x, e)}
-                          onMouseUp={() => handleCharMouseUp(y, x)}
-                        >
-                          {display}
-                        </span>
-                      );
-                    })}
-                  </div>
-                );
-              }) : (
-                <div className="text-sm text-zinc-600">ASCII layer hidden</div>
-              )}
-            </pre>
-          ) : (
-            <div className="text-sm text-zinc-600">
-              {state.loading ? "Processing..." : "Upload an image to begin"}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Canvas Footer Tools */}
-      <div className="h-10 bg-surface-container border-t border-outline-variant flex items-center px-4 gap-4 shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[18px] text-on-surface-variant cursor-pointer hover:text-primary">zoom_in</span>
-          <span className="font-label-caps text-[10px] text-on-surface-variant tracking-wider">{zoomPercent}%</span>
-          <span className="material-symbols-outlined text-[18px] text-on-surface-variant cursor-pointer hover:text-primary">zoom_out</span>
-        </div>
-        <div className="h-4 w-[1px] bg-outline-variant" />
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[18px] text-tertiary">palette</span>
-          <div className="flex gap-1">
-            <div className="w-3 h-3 bg-primary border border-outline-variant cursor-pointer" />
-            <div className="w-3 h-3 bg-secondary border border-outline-variant cursor-pointer" />
-            <div className="w-3 h-3 bg-tertiary border border-outline-variant cursor-pointer" />
-            <div className="w-3 h-3 bg-white border border-outline-variant cursor-pointer" />
+                      color = getThemeColor(state.colorMode, lum, cLine[x]);
+                    }
+                    return (
+                      <span
+                        key={x}
+                        style={color ? { color } : undefined}
+                        className={state.activeLayerId === "ascii-layer" && !asciiLayer?.locked ? "cursor-crosshair hover:bg-secondary/30" : ""}
+                        onMouseDown={(e) => handleCharMouseDown(y, x, e)}
+                        onMouseEnter={(e) => handleCharMouseEnter(y, x, e)}
+                        onMouseUp={() => handleCharMouseUp(y, x)}
+                      >
+                        {display}
+                      </span>
+                    );
+                  })}
+                </div>
+              );
+            }) : (
+              <div className="text-sm text-zinc-600">ASCII layer hidden</div>
+            )}
+          </pre>
+        ) : (
+          <div className="text-sm text-zinc-600">
+            {state.loading ? "Processing..." : "Upload an image to begin"}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

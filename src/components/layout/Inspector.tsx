@@ -26,7 +26,6 @@ export default function Inspector({ section, mobileOpen, onCloseMobile }: Props)
 
   return (
     <>
-      {/* Desktop: Right properties panel */}
       <aside className="hidden xl:flex fixed right-4 top-24 bottom-24 w-64 rounded-lg bg-surface border border-tertiary flex-col p-4 z-40 floating-panel overflow-y-auto">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 bg-tertiary flex items-center justify-center text-on-tertiary rounded-sm">
@@ -34,7 +33,7 @@ export default function Inspector({ section, mobileOpen, onCloseMobile }: Props)
           </div>
           <div>
             <p className="font-label-caps text-[12px] text-tertiary tracking-wider">PROPERTIES</p>
-            <p className="font-label-caps text-[8px] text-on-surface-variant opacity-60 tracking-wider">ASCII_LAYER_01</p>
+            <p className="font-label-caps text-[8px] text-on-surface-variant opacity-60 tracking-wider">{sectionTitle.toUpperCase()}</p>
           </div>
         </div>
         <div className="space-y-4 flex-1">
@@ -45,24 +44,8 @@ export default function Inspector({ section, mobileOpen, onCloseMobile }: Props)
           {section === "export" && <ExportSection />}
           {section === "upload" && <UploadSection state={state} dispatch={dispatch} />}
         </div>
-
-        <div className="mt-auto pt-4 space-y-3 border-t border-outline-variant/30">
-          <div className="flex items-center gap-2 text-on-surface-variant hover:text-tertiary transition-colors cursor-pointer">
-            <span className="material-symbols-outlined text-sm">slow_motion_video</span>
-            <span className="font-label-caps text-[10px] tracking-wider">MOTION</span>
-          </div>
-          <div className="flex items-center gap-2 text-on-surface-variant hover:text-tertiary transition-colors cursor-pointer">
-            <span className="material-symbols-outlined text-sm">auto_awesome</span>
-            <span className="font-label-caps text-[10px] tracking-wider">POST-FX</span>
-          </div>
-          <div className="flex items-center gap-2 text-on-surface-variant hover:text-tertiary transition-colors cursor-pointer">
-            <span className="material-symbols-outlined text-sm">history</span>
-            <span className="font-label-caps text-[10px] tracking-wider">HISTORY</span>
-          </div>
-        </div>
       </aside>
 
-      {/* Mobile: Bottom sheet */}
       {mobileOpen && (
         <div className="xl:hidden fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" onClick={onCloseMobile} />
@@ -160,17 +143,6 @@ function CharactersSection({ state, dispatch }: { state: ReturnType<typeof useAp
               className="w-full rounded-sm border border-outline-variant bg-surface-container px-2 py-1.5 text-xs font-label-caps text-on-surface outline-none focus:border-tertiary transition-colors tracking-wider"
             />
           </div>
-        </div>
-      </section>
-
-      <section>
-        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Filters (Post-FX)</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {["BLEED", "STIPPLE", "HALFTONE", "NOISE"].map((f) => (
-            <button key={f} className="bg-surface-container-high p-2 border border-outline-variant text-[10px] font-label-caps text-on-surface-variant hover:border-tertiary hover:text-tertiary tracking-wider">
-              {f}
-            </button>
-          ))}
         </div>
       </section>
     </>
@@ -287,20 +259,6 @@ function ColorsSection({ state, dispatch }: { state: ReturnType<typeof useApp>; 
           </div>
         </section>
       )}
-
-      <section>
-        <h3 className="text-tertiary font-label-caps text-[10px] uppercase mb-2 border-b border-outline-variant pb-1 tracking-wider">Quick Palette</h3>
-        <div className="flex gap-2">
-          {["#ffb4a4", "#f1be75", "#ffb4a6", "#ffffff", "#00ff00", "#ffaa00"].map((c) => (
-            <button
-              key={c}
-              onClick={() => dispatch({ type: "SET_MONO_COLOR", color: c })}
-              className="w-6 h-6 border border-outline-variant cursor-pointer hover:scale-110 transition-transform"
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
-      </section>
     </>
   );
 }
@@ -338,8 +296,6 @@ function LayersSection({ state, dispatch }: { state: ReturnType<typeof useApp>; 
               >
                 {layer.locked ? "lock" : "lock_open"}
               </button>
-              <button onClick={() => dispatch({ type: "MOVE_LAYER", id: layer.id, direction: "up" })} className="material-symbols-outlined text-base text-on-surface-variant hover:text-on-surface">arrow_upward</button>
-              <button onClick={() => dispatch({ type: "MOVE_LAYER", id: layer.id, direction: "down" })} className="material-symbols-outlined text-base text-on-surface-variant hover:text-on-surface">arrow_downward</button>
             </div>
           ))}
           <button
@@ -349,15 +305,6 @@ function LayersSection({ state, dispatch }: { state: ReturnType<typeof useApp>; 
             + ADD LAYER
           </button>
         </div>
-      </section>
-
-      <section className="pt-3 border-t border-outline-variant/30">
-        <button
-          onClick={() => document.dispatchEvent(new CustomEvent("ascii-studio-save"))}
-          className="w-full py-2 border border-tertiary text-tertiary font-label-caps text-[10px] hover:bg-tertiary/10 transition-colors tracking-wider"
-        >
-          EXPORT META_DATA
-        </button>
       </section>
     </>
   );

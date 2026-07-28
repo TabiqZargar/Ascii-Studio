@@ -61,10 +61,6 @@ export default function Timeline() {
         </span>
       </div>
 
-      <div className="hidden md:block font-label-caps text-[10px] text-on-surface-variant tracking-wider">
-        ASCII ART STUDIO | <span className="text-primary">RISO_CORE_V2</span>
-      </div>
-
       <div className="flex items-center gap-3">
         <button
           onClick={() => dispatch({ type: "TOGGLE_ANIM_LOOP" })}

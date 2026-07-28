@@ -34,10 +34,6 @@ export default function FloatingZoom({ containerRef }: Props) {
         <span className="material-symbols-outlined text-[20px] sm:text-[24px]">zoom_out</span>
       </button>
       <div className="w-px h-4 bg-outline-variant/30 mx-0.5 sm:mx-1" />
-      <button className="px-2 sm:px-4 py-1.5 text-[10px] sm:text-xs font-mono text-on-surface-variant hover:text-on-surface transition-colors">
-        {Math.round(state.zoom * 100)}%
-      </button>
-      <div className="w-px h-4 bg-outline-variant/30 mx-0.5 sm:mx-1" />
       <button onClick={fit} className="p-1.5 sm:p-2 hover:bg-white/5 rounded-full text-on-surface-variant transition-colors" title="Fit to view">
         <span className="material-symbols-outlined text-[20px] sm:text-[24px]">fit_screen</span>
       </button>

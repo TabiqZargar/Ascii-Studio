@@ -39,29 +39,25 @@ export default function Dock({ activeSection, onSectionChange, mobileInspectorOp
 
   return (
     <>
-      {/* Desktop: Left toolset sidebar */}
       <aside className="hidden lg:flex fixed left-4 top-24 bottom-24 w-20 rounded-lg bg-surface border border-secondary flex-col items-center py-4 gap-3 z-40">
-        <div className="mb-4 text-center">
-          <p className="font-label-caps text-[10px] text-secondary opacity-60">TOOLSET</p>
-          <p className="font-label-caps text-[10px] text-secondary">V1.0.4</p>
+        <div className="flex flex-col gap-2 w-full px-2">
+          {dockItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => handleClick(item.id)}
+              className={`w-14 flex flex-col items-center justify-center rounded-sm p-2 transition-all active:scale-95 ${
+                activeSection === item.id && mobileInspectorOpen
+                  ? "bg-secondary text-on-secondary"
+                  : "text-secondary hover:bg-secondary-container hover:text-on-secondary-container"
+              }`}
+            >
+              <span className="material-symbols-outlined text-xl">{item.icon}</span>
+              <span className="font-label-caps text-[8px] mt-1 tracking-wider">{item.label}</span>
+            </button>
+          ))}
         </div>
 
-        {dockItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleClick(item.id)}
-            className={`w-14 flex flex-col items-center justify-center rounded-sm p-2 transition-all active:scale-95 ${
-              activeSection === item.id && mobileInspectorOpen
-                ? "bg-secondary text-on-secondary"
-                : "text-secondary hover:bg-secondary-container hover:text-on-secondary-container"
-            }`}
-          >
-            <span className="material-symbols-outlined text-xl">{item.icon}</span>
-            <span className="font-label-caps text-[8px] mt-1">{item.label}</span>
-          </button>
-        ))}
-
-        <div className="mt-auto border-t border-secondary w-full pt-3 flex flex-col items-center gap-3">
+        <div className="mt-auto border-t border-secondary w-full pt-3 flex flex-col items-center gap-3 px-2">
           {dockBottom.map((item) => (
             <button
               key={item.id}
@@ -73,7 +69,7 @@ export default function Dock({ activeSection, onSectionChange, mobileInspectorOp
               }`}
             >
               <span className="material-symbols-outlined text-xl">{item.icon}</span>
-              <span className="font-label-caps text-[8px] mt-1">{item.label}</span>
+              <span className="font-label-caps text-[8px] mt-1 tracking-wider">{item.label}</span>
             </button>
           ))}
           {state.imageUrl && (
@@ -82,17 +78,12 @@ export default function Dock({ activeSection, onSectionChange, mobileInspectorOp
               className="w-14 flex flex-col items-center justify-center rounded-sm p-2 text-secondary hover:bg-error-container/30 hover:text-error transition-all active:scale-95"
             >
               <span className="material-symbols-outlined text-xl">delete</span>
-              <span className="font-label-caps text-[8px] mt-1">CLEAR</span>
+              <span className="font-label-caps text-[8px] mt-1 tracking-wider">CLEAR</span>
             </button>
           )}
-          <button className="w-14 flex flex-col items-center justify-center rounded-sm p-2 text-secondary hover:bg-secondary-container transition-all">
-            <span className="material-symbols-outlined text-xl">help_outline</span>
-            <span className="font-label-caps text-[8px] mt-1">HELP</span>
-          </button>
         </div>
       </aside>
 
-      {/* Mobile: Bottom tab bar */}
       <nav
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around h-14 bg-surface border-t border-outline-variant"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
